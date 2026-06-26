@@ -1,6 +1,6 @@
 // src/pages/DoctorDashboard.js
 import { useState, useEffect, useCallback } from "react";
-import { T, Badge, Avatar, Card, StatCard, Toast, Spinner, inputStyle, labelStyle } from "../components/UI";
+import { T, Badge, Avatar, Card, StatCard, Toast, Spinner, } from "../components/UI";
 import { getAppointmentsByDoctor, updateAppointmentStatus, getDoctors } from "../firebase/services";
 import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
@@ -11,7 +11,7 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
 export default function DoctorDashboard() {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const [view, setView]               = useState("dashboard");
   const [doctor, setDoctor]           = useState(null);
   const [appointments, setAppointments] = useState([]);
