@@ -13,7 +13,7 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 export default function PatientPortal() {
   const { user, profile } = useAuth();
   const [view, setView] = useState("home");
-  const [doctors, setDoctors] = useState(null);
+  const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
@@ -30,14 +30,15 @@ export default function PatientPortal() {
 
   const loadData = useCallback(async () => {
     setLoadingData(true);
-   try {
+    try {
       const [docs, appts] = await Promise.all([
         getDoctors(),
         getAppointmentsByPatient(user.uid),
       ]);
-      setDoctors(docs.length > 0 ? docs : []);
-      setAppointments(appts);
+      setDoctors(Array.isArray(docs) ? docs : []);
+      setAppointments(Array.isArray(appts) ? appts : []);
     } catch (e) {
+      console.error("Load error:", e);
       showToast("Failed to load data. Check Firebase setup.", "error");
     }
     setLoadingData(false);
@@ -45,9 +46,8 @@ export default function PatientPortal() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const doctorList = doctors || [];
-const specialties = ["All", ...new Set(doctorList.map(d => d.specialty))];
-const filtered = filterSpec === "All" ? doctorList : doctorList.filter(d => d.specialty === filterSpec);
+  const specialties = ["All", ...new Set(doctors.map(d => d.specialty))];
+  const filtered = filterSpec === "All" ? doctors : doctors.filter(d => d.specialty === filterSpec);
 
   const getAvailableDates = (doc) => {
     const dates = [];
@@ -79,8 +79,9 @@ const filtered = filterSpec === "All" ? doctorList : doctorList.filter(d => d.sp
       setView("myappts");
       setBookStep(1);
       setForm({ date: "", slot: "", type: "Online", reason: "" });
-      showToast("Appointment booked! Awaiting doctor confirmation. 🎉");
+      showToast("Appointment booked! Awaiting doctor confirmation.");
     } catch (e) {
+      console.error("Book error:", e);
       showToast("Booking failed. Please try again.", "error");
     }
     setSubmitting(false);
@@ -162,29 +163,36 @@ const filtered = filterSpec === "All" ? doctorList : doctorList.filter(d => d.sp
                 </div>
 
                 <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700, color: T.text }}>Featured Specialists</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12 }}>
-                {doctorList.slice(0, 4).map(doc => (
-                    <div key={doc.id} style={{ background: T.white, borderRadius: 14, padding: 16,
-                      boxShadow: "0 2px 10px rgba(0,0,0,0.06)", border: `1.5px solid ${T.border}` }}>
-                      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-                        <Avatar initials={doc.avatar} color={doc.color} size={44} />
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{doc.name}</div>
-                          <div style={{ fontSize: 12, color: T.muted }}>{doc.specialty}</div>
+                {doctors.length === 0 ? (
+                  <div style={{ padding: "24px", textAlign: "center", color: T.muted, background: T.white,
+                    borderRadius: 14, border: `1.5px solid ${T.border}` }}>
+                    No doctors available yet. Please check back soon.
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12 }}>
+                    {doctors.slice(0, 4).map(doc => (
+                      <div key={doc.id} style={{ background: T.white, borderRadius: 14, padding: 16,
+                        boxShadow: "0 2px 10px rgba(0,0,0,0.06)", border: `1.5px solid ${T.border}` }}>
+                        <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+                          <Avatar initials={doc.avatar || "DR"} color={doc.color || T.primary} size={44} />
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{doc.name}</div>
+                            <div style={{ fontSize: 12, color: T.muted }}>{doc.specialty}</div>
+                          </div>
                         </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                          <div style={{ fontSize: 12, color: T.muted }}>⏳ {doc.exp} yrs</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: T.primary }}>PKR {Number(doc.fee).toLocaleString()}</div>
+                        </div>
+                        <button onClick={() => { setSelectedDoctor(doc); setView("book"); setBookStep(1); setForm({ date:"", slot:"", type:"Online", reason:"" }); }}
+                          style={{ width: "100%", padding: "9px", background: T.primaryLight, color: T.primary,
+                            border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                          Book Now
+                        </button>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                        <div style={{ fontSize: 12, color: T.muted }}>⏳ {doc.exp} yrs</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: T.primary }}>PKR {doc.fee?.toLocaleString()}</div>
-                      </div>
-                      <button onClick={() => { setSelectedDoctor(doc); setView("book"); setBookStep(1); setForm({ date:"", slot:"", type:"Online", reason:"" }); }}
-                        style={{ width: "100%", padding: "9px", background: T.primaryLight, color: T.primary,
-                          border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
-                        Book Now
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -202,27 +210,33 @@ const filtered = filterSpec === "All" ? doctorList : doctorList.filter(d => d.sp
                     </button>
                   ))}
                 </div>
-                <div style={{ display: "grid", gap: 12 }}>
-                  {(filtered || []).map(doc => (
-                    <Card key={doc.id} style={{ display:"flex", gap:16, alignItems:"center", flexWrap:"wrap", padding:"18px 20px" }}>
-                      <Avatar initials={doc.avatar} color={doc.color} size={52} />
-                      <div style={{ flex: 1, minWidth: 180 }}>
-                        <div style={{ fontWeight: 700, fontSize: 15, color: T.text }}>{doc.name}</div>
-                        <div style={{ fontSize: 13, color: T.primary, fontWeight: 600, marginBottom: 4 }}>{doc.specialty}</div>
-                        <div style={{ fontSize: 12, color: T.muted }}>🏥 {doc.hospital}</div>
-                        <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>⏳ {doc.exp} years · 📅 {doc.available?.join(", ")}</div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: T.text, marginBottom: 8 }}>PKR {doc.fee?.toLocaleString()}</div>
-                        <button onClick={() => { setSelectedDoctor(doc); setView("book"); setBookStep(1); setForm({ date:"", slot:"", type:"Online", reason:"" }); }}
-                          style={{ padding:"10px 20px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
-                            color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:13, cursor:"pointer" }}>
-                          Book Appointment
-                        </button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+                {filtered.length === 0 ? (
+                  <div style={{ padding: "40px", textAlign: "center", color: T.muted }}>
+                    No doctors found.
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {filtered.map(doc => (
+                      <Card key={doc.id} style={{ display:"flex", gap:16, alignItems:"center", flexWrap:"wrap", padding:"18px 20px" }}>
+                        <Avatar initials={doc.avatar || "DR"} color={doc.color || T.primary} size={52} />
+                        <div style={{ flex: 1, minWidth: 180 }}>
+                          <div style={{ fontWeight: 700, fontSize: 15, color: T.text }}>{doc.name}</div>
+                          <div style={{ fontSize: 13, color: T.primary, fontWeight: 600, marginBottom: 4 }}>{doc.specialty}</div>
+                          <div style={{ fontSize: 12, color: T.muted }}>🏥 {doc.hospital}</div>
+                          <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>⏳ {doc.exp} years · 📅 {Array.isArray(doc.available) ? doc.available.join(", ") : doc.available}</div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: T.text, marginBottom: 8 }}>PKR {Number(doc.fee).toLocaleString()}</div>
+                          <button onClick={() => { setSelectedDoctor(doc); setView("book"); setBookStep(1); setForm({ date:"", slot:"", type:"Online", reason:"" }); }}
+                            style={{ padding:"10px 20px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
+                              color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                            Book Appointment
+                          </button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -234,19 +248,18 @@ const filtered = filterSpec === "All" ? doctorList : doctorList.filter(d => d.sp
                   ← Back to Doctors
                 </button>
                 <Card style={{ marginBottom:20, display:"flex", gap:16, alignItems:"center", flexWrap:"wrap" }}>
-                  <Avatar initials={selectedDoctor.avatar} color={selectedDoctor.color} size={56} />
+                  <Avatar initials={selectedDoctor.avatar || "DR"} color={selectedDoctor.color || T.primary} size={56} />
                   <div style={{ flex:1 }}>
                     <div style={{ fontWeight:800, fontSize:18, color:T.text }}>{selectedDoctor.name}</div>
                     <div style={{ color:T.primary, fontWeight:600, fontSize:14 }}>{selectedDoctor.specialty}</div>
                     <div style={{ color:T.muted, fontSize:13 }}>🏥 {selectedDoctor.hospital}</div>
                   </div>
                   <div style={{ textAlign:"right" }}>
-                    <div style={{ fontSize:20, fontWeight:800, color:T.text }}>PKR {selectedDoctor.fee?.toLocaleString()}</div>
+                    <div style={{ fontSize:20, fontWeight:800, color:T.text }}>PKR {Number(selectedDoctor.fee).toLocaleString()}</div>
                     <div style={{ fontSize:12, color:T.muted }}>per consultation</div>
                   </div>
                 </Card>
 
-                {/* Step indicators */}
                 <div style={{ display:"flex", alignItems:"center", marginBottom:24 }}>
                   {["Date & Time","Confirm"].map((s,i) => (
                     <div key={s} style={{ display:"flex", alignItems:"center", flex:1 }}>
@@ -264,11 +277,12 @@ const filtered = filterSpec === "All" ? doctorList : doctorList.filter(d => d.sp
                   ))}
                 </div>
 
-                {/* Step 1 */}
                 {bookStep === 1 && (
                   <Card>
                     <h3 style={{ margin:"0 0 4px", color:T.text, fontSize:16 }}>Choose Date & Time</h3>
-                    <p style={{ margin:"0 0 16px", color:T.muted, fontSize:13 }}>Available: {selectedDoctor.available?.join(", ")}</p>
+                    <p style={{ margin:"0 0 16px", color:T.muted, fontSize:13 }}>
+                      Available: {Array.isArray(selectedDoctor.available) ? selectedDoctor.available.join(", ") : selectedDoctor.available}
+                    </p>
                     <div>
                       <label style={labelStyle}>Select Date</label>
                       <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
@@ -291,7 +305,7 @@ const filtered = filterSpec === "All" ? doctorList : doctorList.filter(d => d.sp
                       <div>
                         <label style={labelStyle}>Select Time Slot</label>
                         <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:16 }}>
-                          {selectedDoctor.slots?.map(slot => {
+                          {(Array.isArray(selectedDoctor.slots) ? selectedDoctor.slots : []).map(slot => {
                             const booked = bookedSlots.includes(slot);
                             return (
                               <button key={slot} onClick={() => !booked && setForm(f=>({...f,slot}))} disabled={booked}
@@ -334,7 +348,6 @@ const filtered = filterSpec === "All" ? doctorList : doctorList.filter(d => d.sp
                   </Card>
                 )}
 
-                {/* Step 2 Confirm */}
                 {bookStep === 2 && (
                   <Card>
                     <h3 style={{ margin:"0 0 18px", color:T.text, fontSize:16 }}>Confirm Appointment</h3>
@@ -346,7 +359,7 @@ const filtered = filterSpec === "All" ? doctorList : doctorList.filter(d => d.sp
                         ["Date", new Date(form.date+"T00:00:00").toLocaleDateString("en-PK",{weekday:"long",year:"numeric",month:"long",day:"numeric"})],
                         ["Time", form.slot],
                         ["Type", form.type],
-                        ["Fee", `PKR ${selectedDoctor.fee?.toLocaleString()}`],
+                        ["Fee", `PKR ${Number(selectedDoctor.fee).toLocaleString()}`],
                         ["Reason", form.reason || "—"],
                       ].map(([k,v]) => (
                         <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"9px 0",
