@@ -30,8 +30,7 @@ export default function PatientPortal() {
 
   const loadData = useCallback(async () => {
     setLoadingData(true);
-    try {
-      
+   try {
       const [docs, appts] = await Promise.all([
         getDoctors(),
         getAppointmentsByPatient(user.uid),
