@@ -203,7 +203,7 @@ console.log("Filtered doctors:", filtered.length, "All doctors:", doctors.length
                   ))}
                 </div>
                 <div style={{ display: "grid", gap: 12 }}>
-                  {filtered.map(doc => (
+                  {(filtered || []).map(doc => (
                     <Card key={doc.id} style={{ display:"flex", gap:16, alignItems:"center", flexWrap:"wrap", padding:"18px 20px" }}>
                       <Avatar initials={doc.avatar} color={doc.color} size={52} />
                       <div style={{ flex: 1, minWidth: 180 }}>
