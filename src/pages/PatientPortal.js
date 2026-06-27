@@ -13,7 +13,7 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 export default function PatientPortal() {
   const { user, profile } = useAuth();
   const [view, setView] = useState("home");
-  const [doctors, setDoctors] = useState([]);
+  const [doctors, setDoctors] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
