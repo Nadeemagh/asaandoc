@@ -1,7 +1,7 @@
 // src/pages/PatientPortal.js
 import { useState, useEffect, useCallback } from "react";
 import { T, Badge, Avatar, Card, StatCard, Toast, Spinner, inputStyle, labelStyle } from "../components/UI";
-import { getDoctors, bookAppointment, getAppointmentsByPatient, updateAppointmentStatus, seedDoctors } from "../firebase/services";
+import { getDoctors, bookAppointment, getAppointmentsByPatient, updateAppointmentStatus } from "../firebase/services";
 import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
 
