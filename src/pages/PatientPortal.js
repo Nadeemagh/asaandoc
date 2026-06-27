@@ -45,9 +45,9 @@ export default function PatientPortal() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const specialties = ["All", ...new Set(doctors.map(d => d.specialty))];
-const filtered = filterSpec === "All" ? doctors : doctors.filter(d => d.specialty === filterSpec);
-console.log("Filtered doctors:", filtered.length, "All doctors:", doctors.length);
+  const doctorList = doctors || [];
+const specialties = ["All", ...new Set(doctorList.map(d => d.specialty))];
+const filtered = filterSpec === "All" ? doctorList : doctorList.filter(d => d.specialty === filterSpec);
 
   const getAvailableDates = (doc) => {
     const dates = [];
