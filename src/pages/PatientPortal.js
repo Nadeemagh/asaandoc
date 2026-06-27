@@ -163,7 +163,7 @@ const filtered = filterSpec === "All" ? doctorList : doctorList.filter(d => d.sp
 
                 <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700, color: T.text }}>Featured Specialists</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12 }}>
-                  {doctors.slice(0, 4).map(doc => (
+                {doctorList.slice(0, 4).map(doc => (
                     <div key={doc.id} style={{ background: T.white, borderRadius: 14, padding: 16,
                       boxShadow: "0 2px 10px rgba(0,0,0,0.06)", border: `1.5px solid ${T.border}` }}>
                       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
