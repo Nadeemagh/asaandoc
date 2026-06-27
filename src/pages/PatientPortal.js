@@ -31,7 +31,7 @@ export default function PatientPortal() {
   const loadData = useCallback(async () => {
     setLoadingData(true);
     try {
-      await seedDoctors();
+      
       const [docs, appts] = await Promise.all([
         getDoctors(),
         getAppointmentsByPatient(user.uid),
