@@ -40,14 +40,10 @@ export const getUserProfile = async (uid) => {
 // ─── DOCTORS ──────────────────────────────────────────────────────
 
 export const getDoctors = async () => {
-  try {
-    const snap = await getDocs(collection(db, "doctors"));
-    console.log("Doctors found:", snap.docs.length);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (e) {
-    console.error("getDoctors error:", e);
-    return [];
-  }
+  const snap = await getDocs(collection(db, "doctors"));
+  console.log("Total doctors:", snap.size);
+  snap.docs.forEach(d => console.log("Doctor:", d.data()));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 };
 
 export const seedDoctors = async () => {
