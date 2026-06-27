@@ -35,7 +35,7 @@ export default function PatientPortal() {
         getDoctors(),
         getAppointmentsByPatient(user.uid),
       ]);
-      setDoctors([...docs]);
+      setDoctors(docs.length > 0 ? docs : []);
       setAppointments(appts);
     } catch (e) {
       showToast("Failed to load data. Check Firebase setup.", "error");
