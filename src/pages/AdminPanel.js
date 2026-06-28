@@ -1,7 +1,7 @@
 // src/pages/AdminPanel.js
 import { useState, useEffect, useCallback } from "react";
 import { T, Badge, Card, StatCard, Toast, Spinner } from "../components/UI";
-import { getDoctors, getAllUsers, getAllAppointments, addDoctor, deleteDoctor } from "../firebase/services";
+import { getDoctors, getAllUsers, getAllAppointments, addDoctor, deleteDoctor, updateUserPhone } from "../firebase/services";
 import { logoutUser } from "../firebase/services";
 
 const formatTime = (t) => {
@@ -406,11 +406,9 @@ export default function AdminPanel() {
                               <button onClick={() => {
                                 const phone = window.prompt(`Enter phone number for ${p.name}:`);
                                 if (phone) {
-                                  import("../firebase/services").then(({updateUserPhone}) => {
-                                    updateUserPhone(p.uid||p.id, phone).then(() => {
-                                      setUsers(prev => prev.map(u => u.id===p.id ? {...u, phone} : u));
-                                      showToast("Phone updated! ✅");
-                                    });
+                                  updateUserPhone(p.uid||p.id, phone).then(() => {
+                                    setUsers(prev => prev.map(u => u.id===p.id ? {...u, phone} : u));
+                                    showToast("Phone updated! ✅");
                                   });
                                 }
                               }}
