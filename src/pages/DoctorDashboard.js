@@ -563,6 +563,15 @@ export default function DoctorDashboard() {
                               <div style={{ fontSize:11, color:T.muted }}>🕐 {formatTime(a.slot)} · {a.clinicName||a.type}</div>
                               {a.clinicFee > 0 && <div style={{ fontSize:11, color:T.primary, fontWeight:600 }}>PKR {Number(a.clinicFee).toLocaleString()}</div>}
                               {a.reason && <div style={{ fontSize:11, color:T.muted }}>📝 {a.reason}</div>}
+                              {a.paymentReceipt && (
+                                <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:4 }}>
+                                  <span style={{ fontSize:10 }}>💳</span>
+                                  <span style={{ fontSize:11, color:"#16a34a", fontWeight:600 }}>Receipt uploaded</span>
+                                  <button onClick={() => window.open(a.paymentReceipt)}
+                                    style={{ fontSize:10, color:T.primary, background:"none", border:"none",
+                                      cursor:"pointer", fontWeight:600, textDecoration:"underline" }}>View</button>
+                                </div>
+                              )}
                             </div>
                             <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5 }}>
                               <Badge status={a.status} />
@@ -773,6 +782,29 @@ export default function DoctorDashboard() {
                             {a.clinicFee > 0 && <span style={{ fontSize:12, fontWeight:700, color:T.primary }}>PKR {Number(a.clinicFee).toLocaleString()}</span>}
                           </div>
                           {a.reason && <div style={{ fontSize:12, color:T.muted, marginTop:4 }}>📝 {a.reason}</div>}
+
+                          {/* Payment Receipt from Patient */}
+                          {a.paymentReceipt && (
+                            <div style={{ marginTop:8, padding:"8px 12px", background:"#f0fdf4",
+                              borderRadius:8, border:"1.5px solid #86efac",
+                              display:"flex", alignItems:"center", gap:10 }}>
+                              <span style={{ fontSize:16 }}>💳</span>
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontSize:12, fontWeight:700, color:"#16a34a" }}>Payment Receipt Uploaded</div>
+                                {a.paymentReceiptName && <div style={{ fontSize:11, color:T.muted }}>{a.paymentReceiptName}</div>}
+                              </div>
+                              <button onClick={() => window.open(a.paymentReceipt)}
+                                style={{ padding:"5px 12px", background:"#16a34a", color:"#fff",
+                                  border:"none", borderRadius:6, fontSize:11, fontWeight:700, cursor:"pointer" }}>
+                                👁️ View
+                              </button>
+                            </div>
+                          )}
+                          {!a.paymentReceipt && a.status !== "cancelled" && (
+                            <div style={{ marginTop:6, fontSize:11, color:T.muted, fontStyle:"italic" }}>
+                              ⏳ No payment receipt uploaded yet
+                            </div>
+                          )}
                         </div>
                         <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"flex-start" }}>
                           {a.status==="pending" && (
