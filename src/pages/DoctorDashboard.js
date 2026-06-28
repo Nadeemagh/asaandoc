@@ -316,6 +316,7 @@ export default function DoctorDashboard() {
   const [reportDate, setReportDate]     = useState(fmtDate(today));
   const [toast, setToast]               = useState(null);
   const [sidebarOpen, setSidebarOpen]   = useState(true);
+  const [receiptModal, setReceiptModal] = useState(null);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -567,7 +568,7 @@ export default function DoctorDashboard() {
                                 <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:4 }}>
                                   <span style={{ fontSize:10 }}>💳</span>
                                   <span style={{ fontSize:11, color:"#16a34a", fontWeight:600 }}>Receipt uploaded</span>
-                                  <button onClick={() => window.open(a.paymentReceipt)}
+                                  <button onClick={() => setReceiptModal(a.paymentReceipt)}
                                     style={{ fontSize:10, color:T.primary, background:"none", border:"none",
                                       cursor:"pointer", fontWeight:600, textDecoration:"underline" }}>View</button>
                                 </div>
@@ -793,7 +794,7 @@ export default function DoctorDashboard() {
                                 <div style={{ fontSize:12, fontWeight:700, color:"#16a34a" }}>Payment Receipt Uploaded</div>
                                 {a.paymentReceiptName && <div style={{ fontSize:11, color:T.muted }}>{a.paymentReceiptName}</div>}
                               </div>
-                              <button onClick={() => window.open(a.paymentReceipt)}
+                              <button onClick={() => setReceiptModal(a.paymentReceipt)}
                                 style={{ padding:"5px 12px", background:"#16a34a", color:"#fff",
                                   border:"none", borderRadius:6, fontSize:11, fontWeight:700, cursor:"pointer" }}>
                                 👁️ View
@@ -1028,6 +1029,36 @@ export default function DoctorDashboard() {
         </div>
       </div>
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* Receipt Modal */}
+      {receiptModal && (
+        <div onClick={() => setReceiptModal(null)}
+          style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:9999,
+            display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background:"#fff", borderRadius:16, padding:24, maxWidth:640, width:"100%",
+              maxHeight:"88vh", overflow:"auto", boxShadow:"0 20px 60px rgba(0,0,0,0.4)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <div style={{ fontWeight:700, fontSize:16, color:T.text }}>💳 Patient Payment Receipt</div>
+              <button onClick={() => setReceiptModal(null)}
+                style={{ background:"none", border:"none", fontSize:26, cursor:"pointer", color:T.muted, lineHeight:1 }}>×</button>
+            </div>
+            {receiptModal.startsWith("data:image") ? (
+              <img src={receiptModal} alt="Payment Receipt"
+                style={{ width:"100%", borderRadius:8, border:`1px solid ${T.border}` }} />
+            ) : receiptModal.startsWith("data:application/pdf") ? (
+              <iframe src={receiptModal} style={{ width:"100%", height:520, border:"none", borderRadius:8 }} title="Receipt PDF" />
+            ) : (
+              <div style={{ textAlign:"center", padding:40, color:T.muted }}>Cannot preview this file type.</div>
+            )}
+            <button onClick={() => setReceiptModal(null)}
+              style={{ marginTop:16, width:"100%", padding:"11px", background:T.primary, color:"#fff",
+                border:"none", borderRadius:10, fontWeight:700, fontSize:14, cursor:"pointer" }}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
