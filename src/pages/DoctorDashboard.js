@@ -1,7 +1,7 @@
 // src/pages/DoctorDashboard.js
 import { useState, useEffect, useCallback } from "react";
 import { T, Badge, Card, StatCard, Toast, Spinner } from "../components/UI";
-import { getAppointmentsByDoctor, updateAppointmentStatus, getDoctors } from "../firebase/services";
+import { getAppointmentsByDoctor, updateAppointmentStatus, getDoctors, updateDoctorSchedule, addHoliday, removeHoliday } from "../firebase/services";
 import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
 
@@ -305,6 +305,268 @@ const generateInvoicePDF = (appointment, doctor) => {
   setTimeout(() => { win.print(); }, 500);
 };
 
+// ─── MANAGE SCHEDULE COMPONENT ───────────────────────────────────
+const ALL_DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const ALL_SLOTS = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30",
+  "12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30",
+  "16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00","20:30","21:00"];
+
+function ManageSchedule({ doctor, onUpdate, showToast }) {
+  const [clinics, setClinics] = useState(doctor?.clinics ? JSON.parse(JSON.stringify(doctor.clinics)) : []);
+  const [holidays, setHolidays] = useState(doctor?.holidays || []);
+  const [newHolidayDate, setNewHolidayDate] = useState("");
+  const [newHolidayReason, setNewHolidayReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [activeClinic, setActiveClinic] = useState(0);
+
+  const fmtDate = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-PK",
+    { weekday:"short", year:"numeric", month:"short", day:"numeric" });
+
+  const toggleDay = (clinicIdx, day) => {
+    const updated = [...clinics];
+    const days = updated[clinicIdx].days || [];
+    updated[clinicIdx].days = days.includes(day)
+      ? days.filter(d => d !== day)
+      : [...days, day];
+    setClinics(updated);
+  };
+
+  const toggleSlot = (clinicIdx, slot) => {
+    const updated = [...clinics];
+    const slots = updated[clinicIdx].slots || [];
+    updated[clinicIdx].slots = slots.includes(slot)
+      ? slots.filter(s => s !== slot)
+      : [...slots, slot].sort();
+    setClinics(updated);
+  };
+
+  const updateFee = (clinicIdx, fee) => {
+    const updated = [...clinics];
+    updated[clinicIdx].fee = parseInt(fee) || 0;
+    setClinics(updated);
+  };
+
+  const updateTime = (clinicIdx, field, value) => {
+    const updated = [...clinics];
+    updated[clinicIdx][field] = value;
+    setClinics(updated);
+  };
+
+  const saveSchedule = async () => {
+    setSaving(true);
+    try {
+      await updateDoctorSchedule(doctor.id, clinics);
+      await onUpdate();
+      showToast("Schedule updated successfully! ✅");
+    } catch {
+      showToast("Failed to save. Try again.", "error");
+    }
+    setSaving(false);
+  };
+
+  const handleAddHoliday = async () => {
+    if (!newHolidayDate) return;
+    setSaving(true);
+    try {
+      await addHoliday(doctor.id, newHolidayDate, newHolidayReason);
+      setHolidays(prev => [...prev, { date: newHolidayDate, reason: newHolidayReason || "Holiday" }]);
+      setNewHolidayDate("");
+      setNewHolidayReason("");
+      showToast("Holiday marked! ✅");
+    } catch {
+      showToast("Failed to add holiday.", "error");
+    }
+    setSaving(false);
+  };
+
+  const handleRemoveHoliday = async (date) => {
+    setSaving(true);
+    try {
+      await removeHoliday(doctor.id, date);
+      setHolidays(prev => prev.filter(h => h.date !== date));
+      showToast("Holiday removed.");
+    } catch {
+      showToast("Failed to remove.", "error");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div>
+      <h2 style={{ margin:"0 0 20px", fontSize:18, fontWeight:800, color:T.text }}>⚙️ Manage Schedule</h2>
+
+      {/* Clinic Tabs */}
+      <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap" }}>
+        {clinics.map((c, i) => (
+          <button key={i} onClick={() => setActiveClinic(i)}
+            style={{ padding:"8px 16px", borderRadius:10, border:`2px solid ${activeClinic===i?T.primary:T.border}`,
+              background:activeClinic===i?T.primaryLight:T.white, color:activeClinic===i?T.primary:T.muted,
+              fontWeight:600, fontSize:13, cursor:"pointer" }}>
+            {c.isOnline?"💻":"🏥"} {c.name?.split(" ").slice(0,2).join(" ")}
+          </button>
+        ))}
+      </div>
+
+      {clinics[activeClinic] && (
+        <Card style={{ marginBottom:20 }}>
+          <h3 style={{ margin:"0 0 4px", fontSize:15, fontWeight:700, color:T.text }}>
+            {clinics[activeClinic].isOnline?"💻":"🏥"} {clinics[activeClinic].name}
+          </h3>
+          <div style={{ fontSize:12, color:T.muted, marginBottom:20 }}>📍 {clinics[activeClinic].address}</div>
+
+          {/* Fee */}
+          <div style={{ marginBottom:20 }}>
+            <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+              textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>
+              Consultation Fee (PKR)
+            </label>
+            <input type="number" value={clinics[activeClinic].fee || ""}
+              onChange={e => updateFee(activeClinic, e.target.value)}
+              style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
+                fontSize:14, color:T.text, width:200, outline:"none" }} />
+          </div>
+
+          {/* Timings */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
+            <div>
+              <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+                textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Start Time</label>
+              <select value={clinics[activeClinic].startTime || ""}
+                onChange={e => updateTime(activeClinic, "startTime", e.target.value)}
+                style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
+                  fontSize:14, color:T.text, width:"100%", outline:"none" }}>
+                {ALL_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+                textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>End Time</label>
+              <select value={clinics[activeClinic].endTime || ""}
+                onChange={e => updateTime(activeClinic, "endTime", e.target.value)}
+                style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
+                  fontSize:14, color:T.text, width:"100%", outline:"none" }}>
+                {ALL_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Days */}
+          <div style={{ marginBottom:20 }}>
+            <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+              textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>
+              Available Days
+            </label>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {ALL_DAYS.map(day => {
+                const active = clinics[activeClinic].days?.includes(day);
+                return (
+                  <button key={day} onClick={() => toggleDay(activeClinic, day)}
+                    style={{ padding:"8px 16px", borderRadius:20, fontWeight:700, fontSize:13, cursor:"pointer",
+                      border:`2px solid ${active?T.primary:T.border}`,
+                      background:active?T.primary:T.white,
+                      color:active?"#fff":T.muted, transition:"all 0.15s" }}>
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Time Slots */}
+          <div style={{ marginBottom:20 }}>
+            <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+              textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>
+              Time Slots (select all available)
+            </label>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))", gap:8 }}>
+              {ALL_SLOTS.map(slot => {
+                const active = clinics[activeClinic].slots?.includes(slot);
+                const hour = parseInt(slot.split(":")[0]);
+                const label = `${hour % 12 || 12}:${slot.split(":")[1]} ${hour >= 12 ? "PM" : "AM"}`;
+                return (
+                  <button key={slot} onClick={() => toggleSlot(activeClinic, slot)}
+                    style={{ padding:"8px 6px", borderRadius:8, fontWeight:600, fontSize:12, cursor:"pointer",
+                      border:`2px solid ${active?T.primary:T.border}`,
+                      background:active?T.primaryLight:T.white,
+                      color:active?T.primary:T.muted, transition:"all 0.15s" }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <button onClick={saveSchedule} disabled={saving}
+            style={{ width:"100%", padding:"13px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
+              color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:14,
+              cursor:saving?"not-allowed":"pointer", opacity:saving?0.7:1 }}>
+            {saving ? "Saving..." : "💾 Save Schedule Changes"}
+          </button>
+        </Card>
+      )}
+
+      {/* Holidays */}
+      <Card>
+        <h3 style={{ margin:"0 0 16px", fontSize:15, fontWeight:700, color:T.text }}>
+          🏖️ Mark Holidays / Days Off
+        </h3>
+
+        {/* Add Holiday */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr auto", gap:12, marginBottom:20, alignItems:"end" }}>
+          <div>
+            <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+              textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Date</label>
+            <input type="date" value={newHolidayDate} onChange={e => setNewHolidayDate(e.target.value)}
+              min={new Date().toISOString().split("T")[0]}
+              style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
+                fontSize:14, color:T.text, width:"100%", outline:"none" }} />
+          </div>
+          <div>
+            <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+              textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Reason (optional)</label>
+            <input value={newHolidayReason} onChange={e => setNewHolidayReason(e.target.value)}
+              placeholder="e.g. Eid, Conference, Leave..."
+              style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
+                fontSize:14, color:T.text, width:"100%", outline:"none", fontFamily:"inherit" }} />
+          </div>
+          <button onClick={handleAddHoliday} disabled={!newHolidayDate || saving}
+            style={{ padding:"10px 20px", background:!newHolidayDate?"#ccc":"#EF4444",
+              color:"#fff", border:"none", borderRadius:9, fontWeight:700, fontSize:13,
+              cursor:!newHolidayDate?"not-allowed":"pointer", whiteSpace:"nowrap" }}>
+            🚫 Mark Off
+          </button>
+        </div>
+
+        {/* Holidays List */}
+        {holidays.length === 0 ? (
+          <div style={{ textAlign:"center", padding:"24px 0", color:T.muted, fontSize:13 }}>
+            No holidays marked. Patients can book on all available days.
+          </div>
+        ) : (
+          <div style={{ display:"grid", gap:8 }}>
+            {holidays.sort((a,b) => a.date.localeCompare(b.date)).map((h, i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px",
+                borderRadius:10, background:"#fef2f2", border:"1.5px solid #EF4444" }}>
+                <span style={{ fontSize:20 }}>🚫</span>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:13, color:T.text }}>{fmtDate(h.date)}</div>
+                  <div style={{ fontSize:12, color:"#EF4444", fontWeight:600 }}>{h.reason}</div>
+                </div>
+                <button onClick={() => handleRemoveHoliday(h.date)}
+                  style={{ padding:"5px 12px", background:T.white, color:"#EF4444",
+                    border:"1.5px solid #EF4444", borderRadius:7, fontSize:12,
+                    fontWeight:700, cursor:"pointer" }}>
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 export default function DoctorDashboard() {
   const { profile } = useAuth();
   const [view, setView]                 = useState("dashboard");
@@ -384,6 +646,7 @@ export default function DoctorDashboard() {
     ["schedule","📅","Schedule"],
     ["patients","👥","Appointments"],
     ["report","📄","Daily Report"],
+    ["manage","⚙️","Manage Schedule"],
     ["stats","📈","Analytics"],
   ];
 
@@ -491,7 +754,7 @@ export default function DoctorDashboard() {
             <div style={{ fontWeight:800, fontSize:18, color:T.text }}>
               {view==="dashboard"&&"Dashboard"}{view==="schedule"&&"My Schedule"}
               {view==="patients"&&"All Appointments"}{view==="report"&&"Daily Report"}
-              {view==="stats"&&"Analytics"}
+              {view==="manage"&&"Manage Schedule"}{view==="stats"&&"Analytics"}
             </div>
             <div style={{ fontSize:12, color:T.muted, marginTop:2 }}>
               {new Date().toLocaleDateString("en-PK",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}
@@ -956,6 +1219,11 @@ export default function DoctorDashboard() {
                 </Card>
               )}
             </div>
+          )}
+
+          {/* MANAGE SCHEDULE */}
+          {view === "manage" && (
+            <ManageSchedule doctor={doctor} onUpdate={loadData} showToast={showToast} />
           )}
 
           {/* ANALYTICS */}
