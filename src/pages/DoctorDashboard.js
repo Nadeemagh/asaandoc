@@ -312,18 +312,30 @@ const ALL_SLOTS = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:3
   "16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00","20:30","21:00"];
 
 function ManageSchedule({ doctor, onUpdate, showToast }) {
-  const [clinics, setClinics] = useState(doctor?.clinics ? JSON.parse(JSON.stringify(doctor.clinics)) : []);
+  const [clinics, setClinics] = useState(() => 
+    doctor?.clinics ? JSON.parse(JSON.stringify(doctor.clinics)) : []
+  );
   const [holidays, setHolidays] = useState(doctor?.holidays || []);
   const [newHolidayDate, setNewHolidayDate] = useState("");
   const [newHolidayReason, setNewHolidayReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [activeClinic, setActiveClinic] = useState(0);
 
+  // Sync when doctor data refreshes
+  useEffect(() => {
+    if (doctor?.clinics) {
+      setClinics(JSON.parse(JSON.stringify(doctor.clinics)));
+    }
+    if (doctor?.holidays) {
+      setHolidays(doctor.holidays);
+    }
+  }, [doctor]);
+
   const fmtDate = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-PK",
     { weekday:"short", year:"numeric", month:"short", day:"numeric" });
 
   const toggleDay = (clinicIdx, day) => {
-    const updated = [...clinics];
+    const updated = JSON.parse(JSON.stringify(clinics));
     const days = updated[clinicIdx].days || [];
     updated[clinicIdx].days = days.includes(day)
       ? days.filter(d => d !== day)
@@ -332,7 +344,7 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
   };
 
   const toggleSlot = (clinicIdx, slot) => {
-    const updated = [...clinics];
+    const updated = JSON.parse(JSON.stringify(clinics));
     const slots = updated[clinicIdx].slots || [];
     updated[clinicIdx].slots = slots.includes(slot)
       ? slots.filter(s => s !== slot)
@@ -341,22 +353,23 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
   };
 
   const updateFee = (clinicIdx, fee) => {
-    const updated = [...clinics];
+    const updated = JSON.parse(JSON.stringify(clinics));
     updated[clinicIdx].fee = parseInt(fee) || 0;
     setClinics(updated);
   };
 
-  onst updateTime = (clinicIdx, field, value) => {
+  const updateTime = (clinicIdx, field, value) => {
     const updated = JSON.parse(JSON.stringify(clinics));
     updated[clinicIdx][field] = value;
     setClinics(updated);
   };
+
   const saveSchedule = async () => {
     setSaving(true);
     try {
       await updateDoctorSchedule(doctor.id, clinics);
       await onUpdate();
-      showToast("Schedule updated successfully! ✅ Refresh page to see changes.");
+      showToast("Schedule updated successfully! ✅");
     } catch {
       showToast("Failed to save. Try again.", "error");
     }
