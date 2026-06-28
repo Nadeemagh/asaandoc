@@ -1,7 +1,7 @@
 // src/pages/AdminPanel.js
 import { useState, useEffect, useCallback } from "react";
 import { T, Badge, Card, StatCard, Toast, Spinner } from "../components/UI";
-import { getDoctors, getAllUsers, getAllAppointments, addDoctor, deleteDoctor, updateDoctorData } from "../firebase/services";
+import { getDoctors, getAllUsers, getAllAppointments, addDoctor, deleteDoctor } from "../firebase/services";
 import { logoutUser } from "../firebase/services";
 
 const formatTime = (t) => {
@@ -59,7 +59,6 @@ export default function AdminPanel() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const patients = users.filter(u => u.role === "patient");
-  const doctorUsers = users.filter(u => u.role === "doctor");
   const totalRevenue = appointments.filter(a => a.status === "completed")
     .reduce((s, a) => s + Number(a.clinicFee || 0), 0);
 
@@ -657,4 +656,3 @@ function AddDoctorModal({ onClose, onSave }) {
     </div>
   );
 }
-
