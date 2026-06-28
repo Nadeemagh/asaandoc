@@ -290,7 +290,8 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                 {clinics[activeClinic].isOnline?"💻":"🏥"} {clinics[activeClinic].name}
               </h3>
 
-              {/* Online Toggle */}
+              {/* Online Toggle — only show for online clinic */}
+              {clinics[activeClinic].name?.toLowerCase().includes("online") && (
               <div style={{ marginBottom:16, padding:"12px 14px", borderRadius:10,
                 background:clinics[activeClinic].isOnline?"#f0fdf4":"#fef2f2",
                 border:`1.5px solid ${clinics[activeClinic].isOnline?"#86efac":"#fca5a5"}`,
@@ -315,6 +316,7 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                   {clinics[activeClinic].isOnline ? "Disable" : "Enable"}
                 </button>
               </div>
+              )}
               {!clinics[activeClinic].isOnline && (
                 <div style={{ marginBottom:16 }}>
                   <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Clinic Address</label>
