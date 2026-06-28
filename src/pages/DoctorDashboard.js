@@ -357,7 +357,7 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
     try {
       await updateDoctorSchedule(doctor.id, clinics);
       await onUpdate();
-      showToast("Schedule updated successfully! ✅");
+      showToast("Schedule updated successfully! ✅ Refresh page to see changes.");
     } catch {
       showToast("Failed to save. Try again.", "error");
     }
