@@ -14,7 +14,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Safety timeout - stop loading after 5 seconds no matter what
+    const timeout = setTimeout(() => setLoading(false), 5000);
+
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      clearTimeout(timeout);
       if (firebaseUser) {
         setUser(firebaseUser);
         try {
@@ -30,12 +34,13 @@ export function AuthProvider({ children }) {
       }
       setLoading(false);
     });
-    return unsub;
+
+    return () => { unsub(); clearTimeout(timeout); };
   }, []);
 
   return (
     <AuthContext.Provider value={{ user, profile, loading }}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 }
