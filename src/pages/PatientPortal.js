@@ -19,6 +19,18 @@ const formatTime = (t) => {
   return `${hour12}:${m} ${ampm}`;
 };
 
+// Safely parse any fee format from Firebase
+const parseFee = (fee) => {
+  if (fee === null || fee === undefined) return 0;
+  if (typeof fee === "number") return fee;
+  if (typeof fee === "string") return parseInt(fee) || 0;
+  if (typeof fee === "object") {
+    if (fee.integerValue !== undefined) return parseInt(fee.integerValue) || 0;
+    if (fee.doubleValue !== undefined) return parseFloat(fee.doubleValue) || 0;
+  }
+  return parseInt(String(fee)) || 0;
+};
+
 export default function PatientPortal() {
   const { user, profile } = useAuth();
   const [view, setView] = useState("home");
@@ -96,13 +108,14 @@ export default function PatientPortal() {
     if (!form.date || !form.slot || !selectedClinic) return;
     setSubmitting(true);
     try {
+      const fee = parseFee(selectedClinic.fee);
       await bookAppointment({
         doctorId: selectedDoctor.id,
         doctorName: selectedDoctor.name,
         doctorSpecialty: selectedDoctor.specialty,
         clinicName: selectedClinic.name,
-        clinicAddress: selectedClinic.address,
-        clinicFee: selectedClinic.fee,
+        clinicAddress: selectedClinic.address || "",
+        clinicFee: fee,
         type: selectedClinic.isOnline ? "Online" : "In Person",
         patientUid: user.uid,
         patientName: profile?.name || user.displayName || "Patient",
@@ -149,8 +162,8 @@ export default function PatientPortal() {
     <div style={{ minHeight:"100vh", background:T.bg, fontFamily:"Inter,system-ui,sans-serif" }}>
 
       {/* NAV */}
-      <div style={{ background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`, position:"sticky", top:0, zIndex:100,
-        boxShadow:"0 4px 20px rgba(33,142,182,0.3)", padding:"0 16px" }}>
+      <div style={{ background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`, position:"sticky",
+        top:0, zIndex:100, boxShadow:"0 4px 20px rgba(33,142,182,0.3)", padding:"0 16px" }}>
         <div style={{ maxWidth:960, margin:"0 auto", height:60, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <img src="/logo.png" alt="AsaanDoc" style={{ height:36, filter:"brightness(0) invert(1)" }}
@@ -217,11 +230,8 @@ export default function PatientPortal() {
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))", gap:12 }}>
                     {doctors.slice(0,4).map(doc => {
                       const clinics = getDoctorClinics(doc);
-                      const minFee = Math.min(...clinics.map(c => {
-  const f = c.fee;
-  if (typeof f === "object" && f !== null) return Number(f.integerValue || f) || 0;
-  return Number(f) || 0;
-}));
+                      const fees = clinics.map(c => parseFee(c.fee)).filter(f => f > 0);
+                      const minFee = fees.length > 0 ? Math.min(...fees) : 0;
                       return (
                         <div key={doc.id} style={{ background:T.white, borderRadius:14, padding:16,
                           boxShadow:"0 2px 10px rgba(0,0,0,0.06)", border:`1.5px solid ${T.border}` }}>
@@ -238,7 +248,7 @@ export default function PatientPortal() {
                           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
                             <div style={{ fontSize:12, color:T.muted }}>⏳ {doc.exp} yrs exp</div>
                             <div style={{ fontSize:13, fontWeight:700, color:T.primary }}>
-                             From PKR {minFee > 0 ? minFee.toLocaleString() : "—"}
+                              {minFee > 0 ? `From PKR ${minFee.toLocaleString()}` : "See clinics"}
                             </div>
                           </div>
                           <button onClick={() => startBooking(doc)}
@@ -278,7 +288,6 @@ export default function PatientPortal() {
                       const clinics = getDoctorClinics(doc);
                       return (
                         <Card key={doc.id} style={{ padding:"20px" }}>
-                          {/* Doctor Header */}
                           <div style={{ display:"flex", gap:16, alignItems:"center", marginBottom:16, flexWrap:"wrap" }}>
                             <Avatar initials={doc.avatar||"DR"} color={doc.color||T.primary} size={56} />
                             <div style={{ flex:1 }}>
@@ -295,33 +304,38 @@ export default function PatientPortal() {
                             </button>
                           </div>
 
-                          {/* Clinics Grid */}
-                          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))", gap:10 }}>
-                            {clinics.map((clinic, i) => (
-                              <div key={i} style={{ padding:"12px 14px", borderRadius:12,
-                                background:clinic.isOnline?"#f0fdf4":T.primaryLight,
-                                border:`1.5px solid ${clinic.isOnline?"#86efac":T.primary}` }}>
-                                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
-                                  <div style={{ fontWeight:700, fontSize:13, color:T.text, flex:1 }}>
-                                    {clinic.isOnline ? "💻" : "🏥"} {clinic.name}
+                          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:10 }}>
+                            {clinics.map((clinic, i) => {
+                              const fee = parseFee(clinic.fee);
+                              return (
+                                <div key={i} style={{ padding:"12px 14px", borderRadius:12,
+                                  background:clinic.isOnline?"#f0fdf4":T.primaryLight,
+                                  border:`1.5px solid ${clinic.isOnline?"#86efac":T.primary}` }}>
+                                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:4 }}>
+                                    <div style={{ fontWeight:700, fontSize:13, color:T.text, flex:1 }}>
+                                      {clinic.isOnline?"💻":"🏥"} {clinic.name}
+                                    </div>
+                                    <div style={{ fontSize:13, fontWeight:800, color:clinic.isOnline?"#16a34a":T.primary,
+                                      whiteSpace:"nowrap", marginLeft:8 }}>
+                                      PKR {fee.toLocaleString()}
+                                    </div>
                                   </div>
-                                  <div style={{ fontSize:13, fontWeight:800, color:T.primary, whiteSpace:"nowrap", marginLeft:8 }}>
-                                    PKR {Number(clinic.fee).toLocaleString()}
+                                  {!clinic.isOnline && clinic.address && (
+                                    <div style={{ fontSize:11, color:T.muted, marginBottom:3 }}>📍 {clinic.address}</div>
+                                  )}
+                                  <div style={{ fontSize:11, color:T.muted, marginBottom:2 }}>
+                                    📅 {Array.isArray(clinic.days)
+                                      ? (clinic.days.length===7?"Every Day":clinic.days.join(", "))
+                                      : clinic.days}
                                   </div>
+                                  {clinic.startTime && (
+                                    <div style={{ fontSize:11, color:T.muted }}>
+                                      🕐 {formatTime(clinic.startTime)} – {formatTime(clinic.endTime)}
+                                    </div>
+                                  )}
                                 </div>
-                                {!clinic.isOnline && (
-                                  <div style={{ fontSize:11, color:T.muted, marginBottom:4 }}>📍 {clinic.address}</div>
-                                )}
-                                <div style={{ fontSize:11, color:T.muted, marginBottom:2 }}>
-                                  📅 {Array.isArray(clinic.days) ? clinic.days.join(", ") : clinic.days}
-                                </div>
-                                {clinic.startTime && (
-                                  <div style={{ fontSize:11, color:T.muted }}>
-                                    🕐 {formatTime(clinic.startTime)} – {formatTime(clinic.endTime)}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </Card>
                       );
@@ -340,7 +354,6 @@ export default function PatientPortal() {
                   ← Back to Doctors
                 </button>
 
-                {/* Doctor Header */}
                 <Card style={{ marginBottom:20, display:"flex", gap:16, alignItems:"center", flexWrap:"wrap" }}>
                   <Avatar initials={selectedDoctor.avatar||"DR"} color={selectedDoctor.color||T.primary} size={56} />
                   <div style={{ flex:1 }}>
@@ -350,7 +363,7 @@ export default function PatientPortal() {
                   </div>
                 </Card>
 
-                {/* Step Indicators */}
+                {/* Steps */}
                 <div style={{ display:"flex", alignItems:"center", marginBottom:24 }}>
                   {["Select Clinic","Date & Time","Confirm"].map((s,i) => (
                     <div key={s} style={{ display:"flex", alignItems:"center", flex:1 }}>
@@ -377,74 +390,63 @@ export default function PatientPortal() {
                       Choose Clinic or Consultation Type
                     </h3>
                     <div style={{ display:"grid", gap:12 }}>
-                      {getDoctorClinics(selectedDoctor).map((clinic, i) => (
-                        <div key={i} onClick={() => setSelectedClinic(clinic)}
-                          style={{ padding:"16px", borderRadius:12, cursor:"pointer",
-                            border:`2px solid ${selectedClinic?.name===clinic.name
-                              ? (clinic.isOnline?"#16a34a":T.primary)
-                              : T.border}`,
-                            background:selectedClinic?.name===clinic.name
-                              ? (clinic.isOnline?"#f0fdf4":T.primaryLight)
-                              : T.white,
-                            transition:"all 0.15s" }}>
-                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-                            <div style={{ flex:1 }}>
-                              {/* Clinic Name */}
-                              <div style={{ fontWeight:700, fontSize:15, color:T.text, marginBottom:4 }}>
-                                {clinic.isOnline ? "💻" : "🏥"} {clinic.name}
-                              </div>
-
-                              {/* Address */}
-                              {!clinic.isOnline && clinic.address && (
-                                <div style={{ fontSize:12, color:T.muted, marginBottom:6 }}>
-                                  📍 {clinic.address}
+                      {getDoctorClinics(selectedDoctor).map((clinic, i) => {
+                        const fee = parseFee(clinic.fee);
+                        const isSelected = selectedClinic?.name === clinic.name;
+                        return (
+                          <div key={i} onClick={() => setSelectedClinic(clinic)}
+                            style={{ padding:"16px", borderRadius:12, cursor:"pointer",
+                              border:`2px solid ${isSelected?(clinic.isOnline?"#16a34a":T.primary):T.border}`,
+                              background:isSelected?(clinic.isOnline?"#f0fdf4":T.primaryLight):T.white,
+                              transition:"all 0.15s" }}>
+                            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontWeight:700, fontSize:15, color:T.text, marginBottom:4 }}>
+                                  {clinic.isOnline?"💻":"🏥"} {clinic.name}
                                 </div>
-                              )}
-
-                              {/* Days & Timing chips */}
-                              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6 }}>
-                                <span style={{ fontSize:12, fontWeight:600, padding:"3px 10px", borderRadius:20,
-                                  background:clinic.isOnline?"#dcfce7":"#e0f2fe",
-                                  color:clinic.isOnline?"#16a34a":"#0369a1" }}>
-                                  📅 {Array.isArray(clinic.days)
-                                    ? (clinic.days.length === 7 ? "Every Day" : clinic.days.join(", "))
-                                    : clinic.days}
-                                </span>
-                                {clinic.startTime && (
-                                  <span style={{ fontSize:12, fontWeight:600, padding:"3px 10px", borderRadius:20,
-                                    background:"#f5f3ff", color:"#7c3aed" }}>
-                                    🕐 {formatTime(clinic.startTime)} – {formatTime(clinic.endTime)}
-                                  </span>
+                                {!clinic.isOnline && clinic.address && (
+                                  <div style={{ fontSize:12, color:T.muted, marginBottom:6 }}>
+                                    📍 {clinic.address}
+                                  </div>
                                 )}
+                                <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:4 }}>
+                                  <span style={{ fontSize:12, fontWeight:600, padding:"3px 10px", borderRadius:20,
+                                    background:clinic.isOnline?"#dcfce7":"#e0f2fe",
+                                    color:clinic.isOnline?"#16a34a":"#0369a1" }}>
+                                    📅 {Array.isArray(clinic.days)
+                                      ? (clinic.days.length===7?"Every Day":clinic.days.join(", "))
+                                      : clinic.days}
+                                  </span>
+                                  {clinic.startTime && (
+                                    <span style={{ fontSize:12, fontWeight:600, padding:"3px 10px",
+                                      borderRadius:20, background:"#f5f3ff", color:"#7c3aed" }}>
+                                      🕐 {formatTime(clinic.startTime)} – {formatTime(clinic.endTime)}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-
-                            {/* Fee + Radio */}
-                            <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:8, marginLeft:12 }}>
-                              <div style={{ fontSize:16, fontWeight:800,
-                                color:clinic.isOnline?"#16a34a":T.primary }}>
-                                PKR {Number(clinic.fee).toLocaleString()}
-                              </div>
-                              <div style={{ width:22, height:22, borderRadius:"50%",
-                                border:`2px solid ${selectedClinic?.name===clinic.name
-                                  ? (clinic.isOnline?"#16a34a":T.primary) : T.border}`,
-                                background:selectedClinic?.name===clinic.name
-                                  ? (clinic.isOnline?"#16a34a":T.primary) : "white",
-                                display:"flex", alignItems:"center", justifyContent:"center",
-                                color:"white", fontSize:12 }}>
-                                {selectedClinic?.name===clinic.name?"✓":""}
+                              <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:8, marginLeft:12 }}>
+                                <div style={{ fontSize:17, fontWeight:800,
+                                  color:clinic.isOnline?"#16a34a":T.primary }}>
+                                  PKR {fee > 0 ? fee.toLocaleString() : "—"}
+                                </div>
+                                <div style={{ width:22, height:22, borderRadius:"50%",
+                                  border:`2px solid ${isSelected?(clinic.isOnline?"#16a34a":T.primary):T.border}`,
+                                  background:isSelected?(clinic.isOnline?"#16a34a":T.primary):"white",
+                                  display:"flex", alignItems:"center", justifyContent:"center",
+                                  color:"white", fontSize:12 }}>
+                                  {isSelected?"✓":""}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
-
                     <button onClick={() => selectedClinic && setBookStep(2)}
                       disabled={!selectedClinic}
                       style={{ marginTop:20, width:"100%", padding:"13px",
-                        background:selectedClinic
-                          ?`linear-gradient(135deg,${T.primary},${T.primaryDark})`:T.border,
+                        background:selectedClinic?`linear-gradient(135deg,${T.primary},${T.primaryDark})`:T.border,
                         color:"#fff", border:"none", borderRadius:10, fontWeight:700,
                         fontSize:14, cursor:selectedClinic?"pointer":"not-allowed" }}>
                       Continue to Date & Time →
@@ -455,29 +457,27 @@ export default function PatientPortal() {
                 {/* STEP 2 — Date & Time */}
                 {bookStep === 2 && selectedClinic && (
                   <Card>
-                    {/* Selected clinic reminder */}
                     <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20,
                       padding:"12px 14px", borderRadius:10,
                       background:selectedClinic.isOnline?"#f0fdf4":T.primaryLight,
                       border:`1.5px solid ${selectedClinic.isOnline?"#86efac":T.primary}` }}>
                       <span style={{ fontSize:20 }}>{selectedClinic.isOnline?"💻":"🏥"}</span>
-                      <div>
+                      <div style={{ flex:1 }}>
                         <div style={{ fontWeight:700, fontSize:13, color:T.text }}>{selectedClinic.name}</div>
                         {!selectedClinic.isOnline && (
                           <div style={{ fontSize:11, color:T.muted }}>{selectedClinic.address}</div>
                         )}
-                        <div style={{ fontSize:11, color:T.primary, fontWeight:600 }}>
-                          PKR {Number(selectedClinic.fee).toLocaleString()}
+                        <div style={{ fontSize:12, color:selectedClinic.isOnline?"#16a34a":T.primary, fontWeight:700 }}>
+                          PKR {parseFee(selectedClinic.fee).toLocaleString()}
                         </div>
                       </div>
                       <button onClick={() => setBookStep(1)}
-                        style={{ marginLeft:"auto", background:"none", border:"none",
-                          color:T.primary, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                        style={{ background:"none", border:`1.5px solid ${T.border}`, color:T.primary,
+                          fontSize:12, fontWeight:600, cursor:"pointer", padding:"5px 10px", borderRadius:7 }}>
                         Change
                       </button>
                     </div>
 
-                    {/* Date Picker */}
                     <label style={labelStyle}>Select Date</label>
                     <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
                       {getAvailableDates(selectedClinic).length === 0 ? (
@@ -505,7 +505,6 @@ export default function PatientPortal() {
                       )}
                     </div>
 
-                    {/* Time Slots */}
                     {form.date && (
                       <div>
                         <label style={labelStyle}>Select Time Slot</label>
@@ -527,11 +526,10 @@ export default function PatientPortal() {
                             );
                           })}
                         </div>
-
                         <label style={labelStyle}>Reason for Visit</label>
                         <textarea value={form.reason}
                           onChange={e => setForm(f=>({...f,reason:e.target.value}))}
-                          placeholder="Describe your symptoms or reason for consultation..."
+                          placeholder="Describe your symptoms or reason..."
                           style={{ ...inputStyle, height:80, resize:"vertical" }} />
                       </div>
                     )}
@@ -562,8 +560,7 @@ export default function PatientPortal() {
                     <h3 style={{ margin:"0 0 18px", color:T.text, fontSize:16, fontWeight:700 }}>
                       Confirm Appointment
                     </h3>
-
-                    <div style={{ background:T.bg, borderRadius:12, padding:16, marginBottom:18 }}>
+                    <div style={{ background:T.bg, borderRadius:12, padding:16, marginBottom:16 }}>
                       {[
                         ["Doctor",    selectedDoctor.name],
                         ["Specialty", selectedDoctor.specialty],
@@ -574,7 +571,6 @@ export default function PatientPortal() {
                           {weekday:"long",year:"numeric",month:"long",day:"numeric"})],
                         ["Time",      formatTime(form.slot)],
                         ["Type",      selectedClinic.isOnline?"💻 Online":"🏥 In Person"],
-                        ["Fee",       `PKR ${Number(selectedClinic.fee).toLocaleString()}`],
                         ["Reason",    form.reason||"—"],
                       ].map(([k,v]) => (
                         <div key={k} style={{ display:"flex", justifyContent:"space-between",
@@ -585,7 +581,6 @@ export default function PatientPortal() {
                       ))}
                     </div>
 
-                    {/* Fee highlight */}
                     <div style={{ padding:"14px 16px", borderRadius:10, marginBottom:16,
                       background:selectedClinic.isOnline?"#f0fdf4":T.primaryLight,
                       border:`1.5px solid ${selectedClinic.isOnline?"#86efac":T.primary}`,
@@ -593,7 +588,7 @@ export default function PatientPortal() {
                       <span style={{ fontWeight:600, color:T.text }}>Consultation Fee</span>
                       <span style={{ fontWeight:900, fontSize:20,
                         color:selectedClinic.isOnline?"#16a34a":T.primary }}>
-                        PKR {Number(selectedClinic.fee).toLocaleString()}
+                        PKR {parseFee(selectedClinic.fee).toLocaleString()}
                       </span>
                     </div>
 
@@ -608,8 +603,7 @@ export default function PatientPortal() {
                         style={{ flex:2, padding:"13px",
                           background:`linear-gradient(135deg,${T.accent},#00a87e)`,
                           color:"#fff", border:"none", borderRadius:10, fontWeight:700,
-                          fontSize:14, cursor:submitting?"not-allowed":"pointer",
-                          opacity:submitting?0.7:1 }}>
+                          fontSize:14, cursor:submitting?"not-allowed":"pointer", opacity:submitting?0.7:1 }}>
                         {submitting?"Booking...":"✅ Confirm Booking"}
                       </button>
                     </div>
@@ -621,18 +615,12 @@ export default function PatientPortal() {
             {/* MY APPOINTMENTS */}
             {view === "myappts" && (
               <div>
-                <h2 style={{ margin:"0 0 18px", fontSize:20, fontWeight:800, color:T.text }}>
-                  My Appointments
-                </h2>
+                <h2 style={{ margin:"0 0 18px", fontSize:20, fontWeight:800, color:T.text }}>My Appointments</h2>
                 {appointments.length === 0 ? (
                   <Card style={{ textAlign:"center", padding:"48px 20px" }}>
                     <div style={{ fontSize:48, marginBottom:12 }}>📋</div>
-                    <div style={{ fontWeight:700, fontSize:16, color:T.text, marginBottom:8 }}>
-                      No appointments yet
-                    </div>
-                    <div style={{ color:T.muted, fontSize:14, marginBottom:20 }}>
-                      Book your first consultation
-                    </div>
+                    <div style={{ fontWeight:700, fontSize:16, color:T.text, marginBottom:8 }}>No appointments yet</div>
+                    <div style={{ color:T.muted, fontSize:14, marginBottom:20 }}>Book your first consultation</div>
                     <button onClick={() => setView("browse")}
                       style={{ padding:"11px 24px", background:T.primary, color:"#fff",
                         border:"none", borderRadius:10, fontWeight:700, cursor:"pointer" }}>
@@ -657,17 +645,11 @@ export default function PatientPortal() {
                               <div style={{ display:"flex", justifyContent:"space-between",
                                 alignItems:"flex-start", flexWrap:"wrap", gap:8 }}>
                                 <div>
-                                  <div style={{ fontWeight:700, fontSize:15, color:T.text }}>
-                                    {a.doctorName}
-                                  </div>
-                                  <div style={{ fontSize:13, color:T.primary, fontWeight:600 }}>
-                                    {a.doctorSpecialty}
-                                  </div>
+                                  <div style={{ fontWeight:700, fontSize:15, color:T.text }}>{a.doctorName}</div>
+                                  <div style={{ fontSize:13, color:T.primary, fontWeight:600 }}>{a.doctorSpecialty}</div>
                                 </div>
                                 <Badge status={a.status} />
                               </div>
-
-                              {/* Clinic info */}
                               {a.clinicName && (
                                 <div style={{ fontSize:12, color:T.text, fontWeight:600, marginTop:6 }}>
                                   {isOnline?"💻":"🏥"} {a.clinicName}
@@ -676,17 +658,13 @@ export default function PatientPortal() {
                               {!isOnline && a.clinicAddress && (
                                 <div style={{ fontSize:11, color:T.muted }}>📍 {a.clinicAddress}</div>
                               )}
-
-                              {/* Date & Time */}
                               <div style={{ display:"flex", gap:14, marginTop:6, flexWrap:"wrap" }}>
                                 <span style={{ fontSize:12, color:T.muted }}>
                                   📅 {a.date && new Date(a.date+"T00:00:00").toLocaleDateString("en-PK",
                                     {weekday:"short",month:"short",day:"numeric"})}
                                 </span>
-                                <span style={{ fontSize:12, color:T.muted }}>
-                                  🕐 {formatTime(a.slot)}
-                                </span>
-                                {a.clinicFee && (
+                                <span style={{ fontSize:12, color:T.muted }}>🕐 {formatTime(a.slot)}</span>
+                                {a.clinicFee > 0 && (
                                   <span style={{ fontSize:12, fontWeight:700,
                                     color:isOnline?"#16a34a":T.primary }}>
                                     PKR {Number(a.clinicFee).toLocaleString()}
@@ -694,12 +672,9 @@ export default function PatientPortal() {
                                 )}
                               </div>
                               {a.reason && (
-                                <div style={{ fontSize:12, color:T.muted, marginTop:4 }}>
-                                  📝 {a.reason}
-                                </div>
+                                <div style={{ fontSize:12, color:T.muted, marginTop:4 }}>📝 {a.reason}</div>
                               )}
                             </div>
-
                             {(a.status==="confirmed"||a.status==="pending") && (
                               <button onClick={() => handleCancel(a.id)}
                                 style={{ padding:"7px 14px", background:"#fef2f2", color:"#EF4444",
