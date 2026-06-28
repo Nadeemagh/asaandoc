@@ -43,16 +43,14 @@ export default function DoctorDashboard() {
         d.id === profile?.doctorId ||
         d.name?.toLowerCase() === profile?.name?.toLowerCase()
       ) || allDoctors[0];
-
       setDoctor(myDoc);
-
       if (myDoc) {
         const appts = await getAppointmentsByDoctor(myDoc.id);
         setAppointments(appts);
       }
     } catch (e) {
       console.error("Load error:", e);
-      showToast("Failed to load data. Check Firebase setup.", "error");
+      showToast("Failed to load data.", "error");
     }
     setLoadingData(false);
   }, [profile]);
@@ -63,39 +61,29 @@ export default function DoctorDashboard() {
     try {
       await updateAppointmentStatus(id, status);
       setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
-      const msgs = {
-        confirmed: "Appointment confirmed ✓",
-        completed: "Marked as completed ✓",
-        cancelled: "Appointment declined.",
-      };
+      const msgs = { confirmed:"Appointment confirmed ✓", completed:"Marked as completed ✓", cancelled:"Appointment declined." };
       showToast(msgs[status] || "Updated.");
     } catch {
       showToast("Failed to update. Try again.", "error");
     }
   };
 
-  const todayStr   = fmtDate(today);
-  const todayAppts = appointments.filter(a => a.date === todayStr);
-  const upcoming   = appointments.filter(a => a.date > todayStr && a.status !== "cancelled");
-  const pending    = appointments.filter(a => a.status === "pending");
-  const completed  = appointments.filter(a => a.status === "completed");
-  const dayAppts   = appointments.filter(a => a.date === selectedDate);
+  const todayStr    = fmtDate(today);
+  const todayAppts  = appointments.filter(a => a.date === todayStr);
+  const upcoming    = appointments.filter(a => a.date > todayStr && a.status !== "cancelled");
+  const pending     = appointments.filter(a => a.status === "pending");
+  const completed   = appointments.filter(a => a.status === "completed");
+  const dayAppts    = appointments.filter(a => a.date === selectedDate);
   const filteredAll = filterStatus === "All" ? appointments : appointments.filter(a => a.status === filterStatus);
 
-  // Get all slots for a doctor (from clinics or old slots field)
- 
+  const getPatientDisplay = (a) => a.patientName || a.patientEmail?.split("@")[0] || "Unknown Patient";
 
   const nav = [
-    ["dashboard", "📊", "Dashboard"],
-    ["schedule",  "📅", "Schedule"],
-    ["patients",  "👥", "Appointments"],
-    ["stats",     "📈", "Analytics"],
+    ["dashboard","📊","Dashboard"],
+    ["schedule","📅","Schedule"],
+    ["patients","👥","Appointments"],
+    ["stats","📈","Analytics"],
   ];
-
-  // Patient name display helper
-  const getPatientDisplay = (a) => {
-    return a.patientName || a.patientEmail?.split("@")[0] || "Unknown Patient";
-  };
 
   if (loadingData) return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
@@ -110,34 +98,27 @@ export default function DoctorDashboard() {
   return (
     <div style={{ display:"flex", minHeight:"100vh", fontFamily:"Inter,system-ui,sans-serif", background:T.bg }}>
 
-      {/* ── SIDEBAR ── */}
-      <div style={{
-        width: sidebarOpen ? 230 : 64,
-        background: `linear-gradient(180deg,${T.primaryDark} 0%,#0a3d52 100%)`,
-        display:"flex", flexDirection:"column", flexShrink:0,
-        transition:"width 0.25s ease", overflow:"hidden",
-        boxShadow:"4px 0 20px rgba(0,0,0,0.15)", position:"relative", zIndex:10,
-      }}>
+      {/* SIDEBAR */}
+      <div style={{ width:sidebarOpen?230:64, background:`linear-gradient(180deg,${T.primaryDark} 0%,#0a3d52 100%)`,
+        display:"flex", flexDirection:"column", flexShrink:0, transition:"width 0.25s ease", overflow:"hidden",
+        boxShadow:"4px 0 20px rgba(0,0,0,0.15)", position:"relative", zIndex:10 }}>
+
         <div style={{ padding:"18px 14px 14px", borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom: sidebarOpen ? 16 : 0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:sidebarOpen?16:0 }}>
             {sidebarOpen ? (
-              <img src="/logo.png" alt="AsaanDoc"
-                style={{ height:32, filter:"brightness(0) invert(1)" }}
+              <img src="/logo.png" alt="AsaanDoc" style={{ height:32, filter:"brightness(0) invert(1)" }}
                 onError={e => { e.target.style.display="none"; }} />
             ) : (
               <span style={{ fontSize:24, flexShrink:0 }}>🏥</span>
             )}
-            {sidebarOpen && (
-              <div style={{ color:"rgba(255,255,255,0.45)", fontSize:10, marginTop:2 }}>Doctor Portal</div>
-            )}
+            {sidebarOpen && <div style={{ color:"rgba(255,255,255,0.45)", fontSize:10, marginTop:2 }}>Doctor Portal</div>}
           </div>
           {sidebarOpen && doctor && (
             <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 8px",
               background:"rgba(255,255,255,0.07)", borderRadius:10 }}>
-              <Avatar initials={doctor.avatar || "DR"} color="rgba(255,255,255,0.15)" size={36} />
+              <Avatar initials={doctor.avatar||"DR"} color="rgba(255,255,255,0.15)" size={36} />
               <div style={{ minWidth:0 }}>
-                <div style={{ color:"#fff", fontWeight:700, fontSize:12,
-                  whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                <div style={{ color:"#fff", fontWeight:700, fontSize:12, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                   {profile?.name || doctor.name}
                 </div>
                 <div style={{ color:"rgba(255,255,255,0.5)", fontSize:10 }}>{doctor.specialty}</div>
@@ -149,11 +130,10 @@ export default function DoctorDashboard() {
         <div style={{ padding:"10px 8px", flex:1 }}>
           {nav.map(([v, icon, label]) => (
             <button key={v} onClick={() => setView(v)}
-              style={{ width:"100%", padding:"11px 10px", borderRadius:10, border:"none",
-                cursor:"pointer", marginBottom:4, textAlign:"left",
-                display:"flex", alignItems:"center", gap:10,
-                background: view===v ? "rgba(255,255,255,0.15)" : "transparent",
-                color: view===v ? "#fff" : "rgba(255,255,255,0.55)",
+              style={{ width:"100%", padding:"11px 10px", borderRadius:10, border:"none", cursor:"pointer",
+                marginBottom:4, textAlign:"left", display:"flex", alignItems:"center", gap:10,
+                background:view===v?"rgba(255,255,255,0.15)":"transparent",
+                color:view===v?"#fff":"rgba(255,255,255,0.55)",
                 fontWeight:600, fontSize:13, transition:"all 0.15s", whiteSpace:"nowrap" }}>
               <span style={{ fontSize:16, flexShrink:0 }}>{icon}</span>
               {sidebarOpen && label}
@@ -162,10 +142,12 @@ export default function DoctorDashboard() {
         </div>
 
         <div style={{ padding:"10px 8px 16px", borderTop:"1px solid rgba(255,255,255,0.08)" }}>
-          {sidebarOpen && doctor && (
+          {sidebarOpen && doctor && doctor.clinics && (
             <div style={{ padding:"10px 12px", background:"rgba(255,255,255,0.07)", borderRadius:10, marginBottom:8 }}>
-              <div style={{ fontSize:10, color:"rgba(255,255,255,0.45)", marginBottom:3 }}>Consultation Fee</div>
-              <div style={{ fontSize:17, fontWeight:800, color:"#fff" }}>PKR {Number(doctor.fee).toLocaleString()}</div>
+              <div style={{ fontSize:10, color:"rgba(255,255,255,0.45)", marginBottom:3 }}>Fees from</div>
+              <div style={{ fontSize:17, fontWeight:800, color:"#fff" }}>
+                PKR {Math.min(...doctor.clinics.map(c => Number(c.fee)||0)).toLocaleString()}
+              </div>
             </div>
           )}
           <button onClick={logoutUser}
@@ -177,15 +159,14 @@ export default function DoctorDashboard() {
         </div>
 
         <button onClick={() => setSidebarOpen(o => !o)}
-          style={{ position:"absolute", top:18, right:-12, width:24, height:24,
-            borderRadius:"50%", background:T.primary, border:`2px solid ${T.primaryDark}`,
-            color:"#fff", fontSize:12, cursor:"pointer", display:"flex",
-            alignItems:"center", justifyContent:"center", fontWeight:700 }}>
-          {sidebarOpen ? "‹" : "›"}
+          style={{ position:"absolute", top:18, right:-12, width:24, height:24, borderRadius:"50%",
+            background:T.primary, border:`2px solid ${T.primaryDark}`, color:"#fff", fontSize:12,
+            cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>
+          {sidebarOpen?"‹":"›"}
         </button>
       </div>
 
-      {/* ── MAIN CONTENT ── */}
+      {/* MAIN */}
       <div style={{ flex:1, overflow:"auto" }}>
 
         {/* Top bar */}
@@ -194,10 +175,8 @@ export default function DoctorDashboard() {
           boxShadow:"0 2px 8px rgba(0,0,0,0.04)", position:"sticky", top:0, zIndex:9 }}>
           <div>
             <div style={{ fontWeight:800, fontSize:18, color:T.text }}>
-              {view==="dashboard" && "Dashboard"}
-              {view==="schedule"  && "My Schedule"}
-              {view==="patients"  && "All Appointments"}
-              {view==="stats"     && "Analytics"}
+              {view==="dashboard"&&"Dashboard"}{view==="schedule"&&"My Schedule"}
+              {view==="patients"&&"All Appointments"}{view==="stats"&&"Analytics"}
             </div>
             <div style={{ fontSize:12, color:T.muted, marginTop:2 }}>
               {new Date().toLocaleDateString("en-PK",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}
@@ -220,7 +199,7 @@ export default function DoctorDashboard() {
 
         <div style={{ padding:"24px" }}>
 
-          {/* ── DASHBOARD ── */}
+          {/* DASHBOARD */}
           {view === "dashboard" && (
             <div>
               <div style={{ marginBottom:22 }}>
@@ -228,9 +207,7 @@ export default function DoctorDashboard() {
                   Good {new Date().getHours()<12?"Morning":new Date().getHours()<17?"Afternoon":"Evening"},{" "}
                   {profile?.name?.split(" ")[1] || profile?.name || "Doctor"} 👋
                 </h2>
-                <p style={{ margin:0, color:T.muted, fontSize:13 }}>
-                  Here's what's happening with your appointments today.
-                </p>
+                <p style={{ margin:0, color:T.muted, fontSize:13 }}>Here's what's happening with your appointments today.</p>
               </div>
 
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:12, marginBottom:24 }}>
@@ -241,8 +218,6 @@ export default function DoctorDashboard() {
               </div>
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
-
-                {/* Today's Schedule */}
                 <Card>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
                     <h3 style={{ margin:0, fontSize:15, fontWeight:700, color:T.text }}>📅 Today's Schedule</h3>
@@ -261,8 +236,8 @@ export default function DoctorDashboard() {
                           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
                             <div style={{ flex:1 }}>
                               <div style={{ fontWeight:700, fontSize:14, color:T.text }}>{getPatientDisplay(a)}</div>
-                              <div style={{ fontSize:11, color:T.muted }}>📧 {a.patientEmail || "—"}</div>
-                              <div style={{ fontSize:11, color:T.muted }}>🕐 {formatTime(a.slot)} · {a.clinicName || a.type}</div>
+                              <div style={{ fontSize:11, color:T.muted }}>📧 {a.patientEmail||"—"}</div>
+                              <div style={{ fontSize:11, color:T.muted }}>🕐 {formatTime(a.slot)} · {a.clinicName||a.type}</div>
                               {a.reason && <div style={{ fontSize:11, color:T.muted }}>📝 {a.reason}</div>}
                             </div>
                             <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5 }}>
@@ -270,17 +245,14 @@ export default function DoctorDashboard() {
                               {a.status==="pending" && (
                                 <div style={{ display:"flex", gap:4 }}>
                                   <button onClick={()=>handleUpdateStatus(a.id,"confirmed")}
-                                    style={{ padding:"3px 8px", background:T.accent, color:"#fff",
-                                      border:"none", borderRadius:5, fontSize:10, fontWeight:700, cursor:"pointer" }}>✓</button>
+                                    style={{ padding:"3px 8px", background:T.accent, color:"#fff", border:"none", borderRadius:5, fontSize:10, fontWeight:700, cursor:"pointer" }}>✓</button>
                                   <button onClick={()=>handleUpdateStatus(a.id,"cancelled")}
-                                    style={{ padding:"3px 8px", background:"#fef2f2", color:"#EF4444",
-                                      border:"1px solid #EF4444", borderRadius:5, fontSize:10, fontWeight:700, cursor:"pointer" }}>✗</button>
+                                    style={{ padding:"3px 8px", background:"#fef2f2", color:"#EF4444", border:"1px solid #EF4444", borderRadius:5, fontSize:10, fontWeight:700, cursor:"pointer" }}>✗</button>
                                 </div>
                               )}
                               {a.status==="confirmed" && (
                                 <button onClick={()=>handleUpdateStatus(a.id,"completed")}
-                                  style={{ padding:"3px 8px", background:T.primaryLight, color:T.primary,
-                                    border:`1px solid ${T.primary}`, borderRadius:5, fontSize:10, fontWeight:700, cursor:"pointer" }}>Done</button>
+                                  style={{ padding:"3px 8px", background:T.primaryLight, color:T.primary, border:`1px solid ${T.primary}`, borderRadius:5, fontSize:10, fontWeight:700, cursor:"pointer" }}>Done</button>
                               )}
                             </div>
                           </div>
@@ -290,7 +262,6 @@ export default function DoctorDashboard() {
                   )}
                 </Card>
 
-                {/* Pending Approvals */}
                 <Card>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
                     <h3 style={{ margin:0, fontSize:15, fontWeight:700, color:T.text }}>🔔 Pending Approvals</h3>
@@ -304,27 +275,19 @@ export default function DoctorDashboard() {
                   ) : (
                     <div style={{ display:"grid", gap:8, maxHeight:340, overflowY:"auto" }}>
                       {pending.map(a => (
-                        <div key={a.id} style={{ padding:"12px 13px", borderRadius:10,
-                          background:"#fffbeb", border:"1.5px solid #F59E0B" }}>
+                        <div key={a.id} style={{ padding:"12px 13px", borderRadius:10, background:"#fffbeb", border:"1.5px solid #F59E0B" }}>
                           <div style={{ fontWeight:700, fontSize:14, color:T.text, marginBottom:2 }}>{getPatientDisplay(a)}</div>
-                          <div style={{ fontSize:11, color:T.muted, marginBottom:2 }}>📧 {a.patientEmail || "—"}</div>
+                          <div style={{ fontSize:11, color:T.muted, marginBottom:2 }}>📧 {a.patientEmail||"—"}</div>
                           <div style={{ fontSize:11, color:T.muted, marginBottom:2 }}>
-                            📅 {a.date && new Date(a.date+"T00:00:00").toLocaleDateString("en-PK",
-                              {weekday:"short",month:"short",day:"numeric"})} at {formatTime(a.slot)}
+                            📅 {a.date && new Date(a.date+"T00:00:00").toLocaleDateString("en-PK",{weekday:"short",month:"short",day:"numeric"})} at {formatTime(a.slot)}
                           </div>
                           {a.clinicName && <div style={{ fontSize:11, color:T.muted, marginBottom:2 }}>🏥 {a.clinicName}</div>}
                           {a.reason && <div style={{ fontSize:11, color:T.muted, marginBottom:8 }}>📝 {a.reason}</div>}
                           <div style={{ display:"flex", gap:6, marginTop:8 }}>
                             <button onClick={()=>handleUpdateStatus(a.id,"confirmed")}
-                              style={{ flex:1, padding:"7px", background:T.accent, color:"#fff",
-                                border:"none", borderRadius:7, fontSize:12, fontWeight:700, cursor:"pointer" }}>
-                              ✓ Accept
-                            </button>
+                              style={{ flex:1, padding:"7px", background:T.accent, color:"#fff", border:"none", borderRadius:7, fontSize:12, fontWeight:700, cursor:"pointer" }}>✓ Accept</button>
                             <button onClick={()=>handleUpdateStatus(a.id,"cancelled")}
-                              style={{ flex:1, padding:"7px", background:"#fef2f2", color:"#EF4444",
-                                border:"1.5px solid #EF4444", borderRadius:7, fontSize:12, fontWeight:700, cursor:"pointer" }}>
-                              ✗ Decline
-                            </button>
+                              style={{ flex:1, padding:"7px", background:"#fef2f2", color:"#EF4444", border:"1.5px solid #EF4444", borderRadius:7, fontSize:12, fontWeight:700, cursor:"pointer" }}>✗ Decline</button>
                           </div>
                         </div>
                       ))}
@@ -333,21 +296,14 @@ export default function DoctorDashboard() {
                 </Card>
               </div>
 
-              {/* Upcoming */}
               {upcoming.length > 0 && (
                 <Card>
-                  <h3 style={{ margin:"0 0 16px", fontSize:15, fontWeight:700, color:T.text }}>
-                    ⏳ Upcoming Confirmed ({upcoming.length})
-                  </h3>
+                  <h3 style={{ margin:"0 0 16px", fontSize:15, fontWeight:700, color:T.text }}>⏳ Upcoming Confirmed ({upcoming.length})</h3>
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))", gap:10 }}>
                     {upcoming.slice(0,6).map(a => (
-                      <div key={a.id} style={{ padding:"12px 14px", borderRadius:10, background:T.bg,
-                        border:`1.5px solid ${T.border}` }}>
+                      <div key={a.id} style={{ padding:"12px 14px", borderRadius:10, background:T.bg, border:`1.5px solid ${T.border}` }}>
                         <div style={{ fontWeight:700, fontSize:13, color:T.text, marginBottom:4 }}>{getPatientDisplay(a)}</div>
-                        <div style={{ fontSize:12, color:T.muted }}>
-                          📅 {a.date && new Date(a.date+"T00:00:00").toLocaleDateString("en-PK",
-                            {weekday:"short",month:"short",day:"numeric"})}
-                        </div>
+                        <div style={{ fontSize:12, color:T.muted }}>📅 {a.date && new Date(a.date+"T00:00:00").toLocaleDateString("en-PK",{weekday:"short",month:"short",day:"numeric"})}</div>
                         <div style={{ fontSize:12, color:T.muted }}>🕐 {formatTime(a.slot)}</div>
                         {a.clinicName && <div style={{ fontSize:12, color:T.muted }}>🏥 {a.clinicName}</div>}
                       </div>
@@ -358,47 +314,35 @@ export default function DoctorDashboard() {
             </div>
           )}
 
-          {/* ── SCHEDULE ── */}
+          {/* SCHEDULE */}
           {view === "schedule" && (
             <div>
               <h2 style={{ margin:"0 0 18px", fontSize:18, fontWeight:800, color:T.text }}>Weekly Schedule</h2>
               <div style={{ display:"flex", gap:8, marginBottom:20, overflowX:"auto", paddingBottom:4 }}>
                 {Array.from({length:14},(_,i)=>addDays(today,i-1)).map(d => {
                   const df = fmtDate(d);
-                  const dayName = DAYS[d.getDay()];
                   const count = appointments.filter(a => a.date===df && a.status!=="cancelled").length;
                   const isToday = df === todayStr;
                   return (
                     <button key={df} onClick={() => setSelectedDate(df)}
                       style={{ padding:"10px 12px", borderRadius:12, flexShrink:0, minWidth:64,
                         border:`2px solid ${selectedDate===df?T.primary:isToday?T.primary:"#dde8ed"}`,
-                        background:selectedDate===df?T.primaryLight:T.white,
-                        cursor:"pointer", textAlign:"center", position:"relative" }}>
-                      {isToday && (
-                        <div style={{ position:"absolute", top:4, right:6, width:6, height:6,
-                          borderRadius:"50%", background:T.primary }} />
-                      )}
-                      <div style={{ fontSize:11, fontWeight:600, color:selectedDate===df?T.primary:T.muted }}>{dayName}</div>
+                        background:selectedDate===df?T.primaryLight:T.white, cursor:"pointer", textAlign:"center", position:"relative" }}>
+                      {isToday && <div style={{ position:"absolute", top:4, right:6, width:6, height:6, borderRadius:"50%", background:T.primary }} />}
+                      <div style={{ fontSize:11, fontWeight:600, color:selectedDate===df?T.primary:T.muted }}>{DAYS[d.getDay()]}</div>
                       <div style={{ fontSize:17, fontWeight:800, color:selectedDate===df?T.primary:T.text }}>{d.getDate()}</div>
-                      <div style={{ fontSize:10, color:T.muted }}>
-                        {count>0 ? `${count} appt${count>1?"s":""}` : "Open"}
-                      </div>
+                      <div style={{ fontSize:10, color:T.muted }}>{count>0?`${count} appt${count>1?"s":""}`:""}</div>
                     </button>
                   );
                 })}
               </div>
-
               <Card>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
                   <h3 style={{ margin:0, fontSize:15, fontWeight:700, color:T.text }}>
-                    {new Date(selectedDate+"T00:00:00").toLocaleDateString("en-PK",
-                      {weekday:"long",month:"long",day:"numeric",year:"numeric"})}
+                    {new Date(selectedDate+"T00:00:00").toLocaleDateString("en-PK",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}
                   </h3>
-                  <div style={{ fontSize:12, color:T.muted }}>
-                    {dayAppts.filter(a=>a.status!=="cancelled").length} appointments
-                  </div>
+                  <div style={{ fontSize:12, color:T.muted }}>{dayAppts.filter(a=>a.status!=="cancelled").length} appointments</div>
                 </div>
-
                 {dayAppts.length === 0 ? (
                   <div style={{ textAlign:"center", padding:"32px 0", color:T.muted }}>
                     <div style={{ fontSize:32, marginBottom:8 }}>📅</div>
@@ -410,12 +354,10 @@ export default function DoctorDashboard() {
                       <div key={a.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px",
                         borderRadius:10, border:`1.5px solid ${a.status!=="cancelled"?T.primary:T.border}`,
                         background:a.status!=="cancelled"?T.primaryLight:T.bg }}>
-                        <div style={{ fontWeight:800, fontSize:14, color:T.primary, minWidth:70 }}>
-                          {formatTime(a.slot)}
-                        </div>
+                        <div style={{ fontWeight:800, fontSize:14, color:T.primary, minWidth:70 }}>{formatTime(a.slot)}</div>
                         <div style={{ flex:1 }}>
                           <div style={{ fontWeight:700, fontSize:13, color:T.text }}>{getPatientDisplay(a)}</div>
-                          <div style={{ fontSize:11, color:T.muted }}>📧 {a.patientEmail || "—"}</div>
+                          <div style={{ fontSize:11, color:T.muted }}>📧 {a.patientEmail||"—"}</div>
                           {a.clinicName && <div style={{ fontSize:11, color:T.muted }}>🏥 {a.clinicName}</div>}
                           {a.reason && <div style={{ fontSize:11, color:T.muted }}>📝 {a.reason}</div>}
                         </div>
@@ -424,17 +366,14 @@ export default function DoctorDashboard() {
                           {a.status==="pending" && (
                             <div style={{ display:"flex", gap:4 }}>
                               <button onClick={()=>handleUpdateStatus(a.id,"confirmed")}
-                                style={{ padding:"4px 10px", background:T.accent, color:"#fff",
-                                  border:"none", borderRadius:6, fontSize:11, fontWeight:700, cursor:"pointer" }}>Accept</button>
+                                style={{ padding:"4px 10px", background:T.accent, color:"#fff", border:"none", borderRadius:6, fontSize:11, fontWeight:700, cursor:"pointer" }}>Accept</button>
                               <button onClick={()=>handleUpdateStatus(a.id,"cancelled")}
-                                style={{ padding:"4px 10px", background:"#fef2f2", color:"#EF4444",
-                                  border:"1px solid #EF4444", borderRadius:6, fontSize:11, fontWeight:700, cursor:"pointer" }}>Decline</button>
+                                style={{ padding:"4px 10px", background:"#fef2f2", color:"#EF4444", border:"1px solid #EF4444", borderRadius:6, fontSize:11, fontWeight:700, cursor:"pointer" }}>Decline</button>
                             </div>
                           )}
                           {a.status==="confirmed" && (
                             <button onClick={()=>handleUpdateStatus(a.id,"completed")}
-                              style={{ padding:"4px 10px", background:T.primaryLight, color:T.primary,
-                                border:`1px solid ${T.primary}`, borderRadius:6, fontSize:11, fontWeight:700, cursor:"pointer" }}>Mark Done</button>
+                              style={{ padding:"4px 10px", background:T.primaryLight, color:T.primary, border:`1px solid ${T.primary}`, borderRadius:6, fontSize:11, fontWeight:700, cursor:"pointer" }}>Mark Done</button>
                           )}
                         </div>
                       </div>
@@ -445,27 +384,22 @@ export default function DoctorDashboard() {
             </div>
           )}
 
-          {/* ── ALL APPOINTMENTS ── */}
+          {/* ALL APPOINTMENTS */}
           {view === "patients" && (
             <div>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18, flexWrap:"wrap", gap:12 }}>
-                <h2 style={{ margin:0, fontSize:18, fontWeight:800, color:T.text }}>
-                  All Appointments ({filteredAll.length})
-                </h2>
+                <h2 style={{ margin:0, fontSize:18, fontWeight:800, color:T.text }}>All Appointments ({filteredAll.length})</h2>
                 <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                   {["All","pending","confirmed","completed","cancelled"].map(s => (
                     <button key={s} onClick={() => setFilterStatus(s)}
-                      style={{ padding:"6px 13px", borderRadius:20,
-                        border:`1.5px solid ${filterStatus===s?T.primary:T.border}`,
-                        background:filterStatus===s?T.primary:T.white,
-                        color:filterStatus===s?"#fff":T.muted,
+                      style={{ padding:"6px 13px", borderRadius:20, border:`1.5px solid ${filterStatus===s?T.primary:T.border}`,
+                        background:filterStatus===s?T.primary:T.white, color:filterStatus===s?"#fff":T.muted,
                         fontSize:12, fontWeight:600, cursor:"pointer", textTransform:"capitalize" }}>
-                      {s} {s!=="All" && `(${appointments.filter(a=>a.status===s).length})`}
+                      {s} {s!=="All"&&`(${appointments.filter(a=>a.status===s).length})`}
                     </button>
                   ))}
                 </div>
               </div>
-
               {filteredAll.length === 0 ? (
                 <Card style={{ textAlign:"center", padding:"48px 20px" }}>
                   <div style={{ fontSize:48, marginBottom:12 }}>📋</div>
@@ -476,81 +410,38 @@ export default function DoctorDashboard() {
                   {filteredAll.sort((a,b)=>b.date?.localeCompare(a.date)).map(a => (
                     <Card key={a.id} style={{ padding:"16px 20px" }}>
                       <div style={{ display:"flex", alignItems:"flex-start", gap:14, flexWrap:"wrap" }}>
-                        {/* Patient Avatar */}
                         <div style={{ width:46, height:46, borderRadius:"50%", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
-                          display:"flex", alignItems:"center", justifyContent:"center",
-                          color:"#fff", fontWeight:800, fontSize:16, flexShrink:0 }}>
+                          display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:800, fontSize:16, flexShrink:0 }}>
                           {getPatientDisplay(a).charAt(0).toUpperCase()}
                         </div>
-
                         <div style={{ flex:1, minWidth:200 }}>
-                          {/* Patient Name + Badge */}
                           <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap", marginBottom:6 }}>
-                            <span style={{ fontWeight:800, fontSize:16, color:T.text }}>
-                              {getPatientDisplay(a)}
-                            </span>
+                            <span style={{ fontWeight:800, fontSize:16, color:T.text }}>{getPatientDisplay(a)}</span>
                             <Badge status={a.status} />
                           </div>
-
-                          {/* Patient Email */}
-                          {a.patientEmail && (
-                            <div style={{ fontSize:12, color:T.primary, fontWeight:600, marginBottom:6 }}>
-                              📧 {a.patientEmail}
-                            </div>
-                          )}
-
-                          {/* Clinic */}
-                          {a.clinicName && (
-                            <div style={{ fontSize:12, color:T.text, fontWeight:600, marginBottom:4 }}>
-                              🏥 {a.clinicName}
-                            </div>
-                          )}
-                          {a.clinicAddress && (
-                            <div style={{ fontSize:11, color:T.muted, marginBottom:4 }}>
-                              📍 {a.clinicAddress}
-                            </div>
-                          )}
-
-                          {/* Date, Time, Type */}
+                          {a.patientEmail && <div style={{ fontSize:12, color:T.primary, fontWeight:600, marginBottom:4 }}>📧 {a.patientEmail}</div>}
+                          {a.clinicName && <div style={{ fontSize:12, color:T.text, fontWeight:600, marginBottom:4 }}>🏥 {a.clinicName}</div>}
+                          {a.clinicAddress && <div style={{ fontSize:11, color:T.muted, marginBottom:4 }}>📍 {a.clinicAddress}</div>}
                           <div style={{ display:"flex", gap:14, flexWrap:"wrap", marginTop:4 }}>
-                            <span style={{ fontSize:12, color:T.muted }}>
-                              📅 {a.date && new Date(a.date+"T00:00:00").toLocaleDateString("en-PK",
-                                {weekday:"short",month:"short",day:"numeric",year:"numeric"})}
-                            </span>
+                            <span style={{ fontSize:12, color:T.muted }}>📅 {a.date && new Date(a.date+"T00:00:00").toLocaleDateString("en-PK",{weekday:"short",month:"short",day:"numeric",year:"numeric"})}</span>
                             <span style={{ fontSize:12, color:T.muted }}>🕐 {formatTime(a.slot)}</span>
-                            <span style={{ fontSize:12, color:T.muted }}>
-                              {a.type==="Online"?"💻":"🏥"} {a.type}
-                            </span>
+                            <span style={{ fontSize:12, color:T.muted }}>{a.type==="Online"?"💻":"🏥"} {a.type}</span>
+                            {a.clinicFee > 0 && <span style={{ fontSize:12, fontWeight:700, color:T.primary }}>PKR {Number(a.clinicFee).toLocaleString()}</span>}
                           </div>
-
-                          {/* Reason */}
-                          {a.reason && (
-                            <div style={{ fontSize:12, color:T.muted, marginTop:4 }}>📝 {a.reason}</div>
-                          )}
+                          {a.reason && <div style={{ fontSize:12, color:T.muted, marginTop:4 }}>📝 {a.reason}</div>}
                         </div>
-
-                        {/* Action Buttons */}
                         <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"flex-start" }}>
                           {a.status==="pending" && (
                             <>
                               <button onClick={()=>handleUpdateStatus(a.id,"confirmed")}
-                                style={{ padding:"8px 16px", background:T.accent, color:"#fff",
-                                  border:"none", borderRadius:8, fontSize:12, fontWeight:700, cursor:"pointer" }}>
-                                ✓ Accept
-                              </button>
+                                style={{ padding:"8px 16px", background:T.accent, color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:700, cursor:"pointer" }}>✓ Accept</button>
                               <button onClick={()=>handleUpdateStatus(a.id,"cancelled")}
-                                style={{ padding:"8px 14px", background:"#fef2f2", color:"#EF4444",
-                                  border:"1.5px solid #EF4444", borderRadius:8, fontSize:12, fontWeight:700, cursor:"pointer" }}>
-                                ✗ Decline
-                              </button>
+                                style={{ padding:"8px 14px", background:"#fef2f2", color:"#EF4444", border:"1.5px solid #EF4444", borderRadius:8, fontSize:12, fontWeight:700, cursor:"pointer" }}>✗ Decline</button>
                             </>
                           )}
                           {a.status==="confirmed" && (
                             <button onClick={()=>handleUpdateStatus(a.id,"completed")}
-                              style={{ padding:"8px 16px", background:T.primaryLight, color:T.primary,
-                                border:`1.5px solid ${T.primary}`, borderRadius:8, fontSize:12, fontWeight:700, cursor:"pointer" }}>
-                              ✅ Mark Done
-                            </button>
+                              style={{ padding:"8px 16px", background:T.primaryLight, color:T.primary, border:`1.5px solid ${T.primary}`, borderRadius:8, fontSize:12, fontWeight:700, cursor:"pointer" }}>✅ Mark Done</button>
                           )}
                         </div>
                       </div>
@@ -561,27 +452,20 @@ export default function DoctorDashboard() {
             </div>
           )}
 
-          {/* ── ANALYTICS ── */}
+          {/* ANALYTICS */}
           {view === "stats" && (
             <div>
               <h2 style={{ margin:"0 0 18px", fontSize:18, fontWeight:800, color:T.text }}>Analytics Overview</h2>
-
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:12, marginBottom:24 }}>
-                <StatCard label="Total"     value={appointments.length}                                        icon="📋" color={T.primary} />
-                <StatCard label="Confirmed" value={appointments.filter(a=>a.status==="confirmed").length}     icon="✅" color={T.accent}  />
-                <StatCard label="Completed" value={completed.length}                                           icon="🎯" color="#8B5CF6"   />
-                <StatCard label="Cancelled" value={appointments.filter(a=>a.status==="cancelled").length}     icon="❌" color="#EF4444"   />
+                <StatCard label="Total"     value={appointments.length} icon="📋" color={T.primary} />
+                <StatCard label="Confirmed" value={appointments.filter(a=>a.status==="confirmed").length} icon="✅" color={T.accent} />
+                <StatCard label="Completed" value={completed.length} icon="🎯" color="#8B5CF6" />
+                <StatCard label="Cancelled" value={appointments.filter(a=>a.status==="cancelled").length} icon="❌" color="#EF4444" />
               </div>
-
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
                 <Card>
                   <h3 style={{ margin:"0 0 16px", fontSize:15, fontWeight:700, color:T.text }}>Status Breakdown</h3>
-                  {[
-                    ["confirmed", T.accent,  "Confirmed"],
-                    ["pending",   T.warn,    "Pending"],
-                    ["completed", "#8B5CF6", "Completed"],
-                    ["cancelled", "#EF4444", "Cancelled"],
-                  ].map(([status, color, label]) => {
+                  {[["confirmed",T.accent,"Confirmed"],["pending",T.warn,"Pending"],["completed","#8B5CF6","Completed"],["cancelled","#EF4444","Cancelled"]].map(([status,color,label]) => {
                     const count = appointments.filter(a=>a.status===status).length;
                     const pct = appointments.length ? Math.round(count/appointments.length*100) : 0;
                     return (
@@ -591,14 +475,12 @@ export default function DoctorDashboard() {
                           <span style={{ fontSize:13, fontWeight:700, color }}>{count} ({pct}%)</span>
                         </div>
                         <div style={{ height:8, background:T.bg, borderRadius:10, overflow:"hidden" }}>
-                          <div style={{ height:"100%", borderRadius:10, background:color,
-                            width:`${pct}%`, transition:"width 0.5s ease" }} />
+                          <div style={{ height:"100%", borderRadius:10, background:color, width:`${pct}%`, transition:"width 0.5s ease" }} />
                         </div>
                       </div>
                     );
                   })}
                 </Card>
-
                 <Card>
                   <h3 style={{ margin:"0 0 16px", fontSize:15, fontWeight:700, color:T.text }}>Consultation Types</h3>
                   {["Online","In Person"].map(type => {
@@ -620,55 +502,39 @@ export default function DoctorDashboard() {
                   })}
                 </Card>
               </div>
-
-              {/* Doctor Profile */}
               {doctor && (
                 <Card>
                   <h3 style={{ margin:"0 0 16px", fontSize:15, fontWeight:700, color:T.text }}>My Profile</h3>
                   <div style={{ display:"flex", gap:16, alignItems:"flex-start", flexWrap:"wrap" }}>
-                    <Avatar initials={doctor.avatar || "DR"} color={doctor.color || T.primary} size={60} />
+                    <Avatar initials={doctor.avatar||"DR"} color={doctor.color||T.primary} size={60} />
                     <div style={{ flex:1 }}>
-                      <div style={{ fontWeight:800, fontSize:17, color:T.text }}>{profile?.name || doctor.name}</div>
+                      <div style={{ fontWeight:800, fontSize:17, color:T.text }}>{profile?.name||doctor.name}</div>
                       <div style={{ fontSize:14, color:T.primary, fontWeight:600 }}>{doctor.specialty}</div>
                       <div style={{ fontSize:13, color:T.muted, marginTop:4 }}>⏳ {doctor.exp} years experience</div>
-
-                      {/* Show clinics if available */}
-                      {doctor.clinics && Array.isArray(doctor.clinics) ? (
+                      {doctor.clinics && Array.isArray(doctor.clinics) && (
                         <div style={{ marginTop:10 }}>
-                          <div style={{ fontSize:12, fontWeight:700, color:T.text, marginBottom:6 }}>
-                            🏥 Clinic Locations:
-                          </div>
-                          {doctor.clinics.map((c, i) => (
-                            <div key={i} style={{ padding:"8px 12px", background:T.bg, borderRadius:8,
-                              marginBottom:6, borderLeft:`3px solid ${T.primary}` }}>
-                              <div style={{ fontWeight:600, fontSize:12, color:T.text }}>{c.name}</div>
-                              <div style={{ fontSize:11, color:T.muted }}>📍 {c.address}</div>
+                          <div style={{ fontSize:12, fontWeight:700, color:T.text, marginBottom:6 }}>🏥 Clinic Locations:</div>
+                          {doctor.clinics.map((c,i) => (
+                            <div key={i} style={{ padding:"8px 12px", background:T.bg, borderRadius:8, marginBottom:6, borderLeft:`3px solid ${c.isOnline?"#16a34a":T.primary}` }}>
+                              <div style={{ fontWeight:600, fontSize:12, color:T.text }}>{c.isOnline?"💻":"🏥"} {c.name}</div>
+                              {!c.isOnline && <div style={{ fontSize:11, color:T.muted }}>📍 {c.address}</div>}
                               <div style={{ fontSize:11, color:T.muted }}>
-                                📅 {Array.isArray(c.days) ? c.days.join(", ") : c.days}
-                                {c.startTime && ` · 🕐 ${c.startTime} – ${c.endTime}`}
+                                📅 {Array.isArray(c.days)?(c.days.length===7?"Every Day":c.days.join(", ")):c.days}
+                                {c.startTime && ` · 🕐 ${formatTime(c.startTime)} – ${formatTime(c.endTime)}`}
                               </div>
+                              <div style={{ fontSize:12, fontWeight:700, color:c.isOnline?"#16a34a":T.primary }}>PKR {Number(c.fee).toLocaleString()}</div>
                             </div>
                           ))}
                         </div>
-                      ) : (
-                        <div style={{ fontSize:13, color:T.muted, marginTop:4 }}>
-                          🏥 {doctor.hospital}
-                        </div>
                       )}
-                    </div>
-                    <div style={{ textAlign:"right" }}>
-                      <div style={{ fontSize:11, color:T.muted, marginBottom:4 }}>Consultation Fee</div>
-                      <div style={{ fontSize:24, fontWeight:900, color:T.text }}>PKR {Number(doctor.fee).toLocaleString()}</div>
                     </div>
                   </div>
                 </Card>
               )}
             </div>
           )}
-
         </div>
       </div>
-
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
