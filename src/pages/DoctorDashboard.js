@@ -335,72 +335,70 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                 </div>
               )}
 
-              {/* Hide all settings when online clinic is disabled */}
-              {(!clinics[activeClinic].name?.toLowerCase().includes("online") || clinics[activeClinic].isOnline) && (
-              <div>
-                <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Consultation Fee (PKR)</label>
-                <input type="number" value={clinics[activeClinic].fee||""} onChange={e=>updateFee(activeClinic,e.target.value)}
-                  style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`, fontSize:14, color:T.text, width:200, outline:"none" }} />
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
-                <div>
-                  <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Start Time</label>
-                  <select value={clinics[activeClinic].startTime||""} onChange={e=>updateTime(activeClinic,"startTime",e.target.value)}
-                    style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`, fontSize:14, color:T.text, width:"100%", outline:"none" }}>
-                    {ALL_SLOTS.map(s=><option key={s} value={s}>{s}</option>)}
-                  </select>
+              {/* Hide fee/schedule when online clinic is disabled */}
+              {(!clinics[activeClinic].name?.toLowerCase().includes("online") || clinics[activeClinic].isOnline) && (<>
+                <div style={{ marginBottom:16 }}>
+                  <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Consultation Fee (PKR)</label>
+                  <input type="number" value={clinics[activeClinic].fee||""} onChange={e=>updateFee(activeClinic,e.target.value)}
+                    style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`, fontSize:14, color:T.text, width:200, outline:"none" }} />
                 </div>
-                <div>
-                  <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>End Time</label>
-                  <select value={clinics[activeClinic].endTime||""} onChange={e=>updateTime(activeClinic,"endTime",e.target.value)}
-                    style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`, fontSize:14, color:T.text, width:"100%", outline:"none" }}>
-                    {ALL_SLOTS.map(s=><option key={s} value={s}>{s}</option>)}
-                  </select>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
+                  <div>
+                    <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Start Time</label>
+                    <select value={clinics[activeClinic].startTime||""} onChange={e=>updateTime(activeClinic,"startTime",e.target.value)}
+                      style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`, fontSize:14, color:T.text, width:"100%", outline:"none" }}>
+                      {ALL_SLOTS.map(s=><option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>End Time</label>
+                    <select value={clinics[activeClinic].endTime||""} onChange={e=>updateTime(activeClinic,"endTime",e.target.value)}
+                      style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`, fontSize:14, color:T.text, width:"100%", outline:"none" }}>
+                      {ALL_SLOTS.map(s=><option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
                 </div>
-              </div>
-              <div style={{ marginBottom:16 }}>
-                <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Available Days</label>
-                <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                  {ALL_DAYS.map(day => {
-                    const active = clinics[activeClinic].days?.includes(day);
-                    return (
-                      <button key={day} onClick={()=>toggleDay(activeClinic,day)}
-                        style={{ padding:"8px 16px", borderRadius:20, fontWeight:700, fontSize:13, cursor:"pointer",
-                          border:`2px solid ${active?T.primary:T.border}`,
-                          background:active?T.primary:T.white, color:active?"#fff":T.muted }}>
-                        {day}
-                      </button>
-                    );
-                  })}
+                <div style={{ marginBottom:16 }}>
+                  <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Available Days</label>
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                    {ALL_DAYS.map(day => {
+                      const active = clinics[activeClinic].days?.includes(day);
+                      return (
+                        <button key={day} onClick={()=>toggleDay(activeClinic,day)}
+                          style={{ padding:"8px 16px", borderRadius:20, fontWeight:700, fontSize:13, cursor:"pointer",
+                            border:`2px solid ${active?T.primary:T.border}`,
+                            background:active?T.primary:T.white, color:active?"#fff":T.muted }}>
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-              <div style={{ marginBottom:20 }}>
-                <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Time Slots</label>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))", gap:8 }}>
-                  {ALL_SLOTS.map(slot => {
-                    const active = clinics[activeClinic].slots?.includes(slot);
-                    const hour = parseInt(slot.split(":")[0]);
-                    const lbl = `${hour%12||12}:${slot.split(":")[1]} ${hour>=12?"PM":"AM"}`;
-                    return (
-                      <button key={slot} onClick={()=>toggleSlot(activeClinic,slot)}
-                        style={{ padding:"8px 6px", borderRadius:8, fontWeight:600, fontSize:12, cursor:"pointer",
-                          border:`2px solid ${active?T.primary:T.border}`,
-                          background:active?T.primaryLight:T.white, color:active?T.primary:T.muted }}>
-                        {lbl}
-                      </button>
-                    );
-                  })}
+                <div style={{ marginBottom:20 }}>
+                  <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Time Slots</label>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))", gap:8 }}>
+                    {ALL_SLOTS.map(slot => {
+                      const active = clinics[activeClinic].slots?.includes(slot);
+                      const hour = parseInt(slot.split(":")[0]);
+                      const lbl = `${hour%12||12}:${slot.split(":")[1]} ${hour>=12?"PM":"AM"}`;
+                      return (
+                        <button key={slot} onClick={()=>toggleSlot(activeClinic,slot)}
+                          style={{ padding:"8px 6px", borderRadius:8, fontWeight:600, fontSize:12, cursor:"pointer",
+                            border:`2px solid ${active?T.primary:T.border}`,
+                            background:active?T.primaryLight:T.white, color:active?T.primary:T.muted }}>
+                          {lbl}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-              {(!clinics[activeClinic].name?.toLowerCase().includes("online") || clinics[activeClinic].isOnline) && (
-              <button onClick={saveSchedule} disabled={saving}
-                style={{ width:"100%", padding:"13px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
-                  color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:14,
-                  cursor:saving?"not-allowed":"pointer", opacity:saving?0.7:1 }}>
-                {saving?"Saving...":"💾 Save Clinic Schedule"}
-              </button>
-              </div>
-              )}
+                <button onClick={saveSchedule} disabled={saving}
+                  style={{ width:"100%", padding:"13px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
+                    color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:14,
+                    cursor:saving?"not-allowed":"pointer", opacity:saving?0.7:1 }}>
+                  {saving?"Saving...":"💾 Save Clinic Schedule"}
+                </button>
+              </>)}
             </Card>
           )}
         </div>
