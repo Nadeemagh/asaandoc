@@ -19,12 +19,12 @@ export default function App() {
 
   if (!user) return <AuthPage />;
 
-  // Admin check
-  if (ADMIN_EMAILS.includes(user.email)) return <AdminPanel />;
+  // Admin check — MUST be before role check
+  if (ADMIN_EMAILS.includes(user.email?.toLowerCase().trim())) {
+    return <AdminPanel />;
+  }
 
   // Role-based routing
   if (profile?.role === "doctor") return <DoctorDashboard />;
-  if (profile?.role === "patient") return <PatientPortal />;
-
-  return <AuthPage />;
+  return <PatientPortal />;
 }
