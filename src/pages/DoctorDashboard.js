@@ -1,7 +1,7 @@
 // src/pages/DoctorDashboard.js
 import { useState, useEffect, useCallback } from "react";
 import { T, Badge, Card, StatCard, Toast, Spinner } from "../components/UI";
-import { getAppointmentsByDoctor, updateAppointmentStatus, getDoctors, updateDoctorSchedule, addHoliday, removeHoliday } from "../firebase/services";
+import { getAppointmentsByDoctor, updateAppointmentStatus, getDoctors, updateDoctorSchedule, updateDoctorProfile, addHoliday, removeHoliday } from "../firebase/services";
 import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
 
@@ -350,14 +350,7 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
   const saveProfile = async () => {
     setSaving(true);
     try {
-      await updateDoctorSchedule(doctor.id, clinics);
-      const { updateDoc, doc: fsDoc, serverTimestamp } = await import("firebase/firestore");
-      const { db } = await import("../firebase/config");
-      await updateDoc(fsDoc(db, "doctors", doctor.id), {
-        exp: Number(exp) || doctor.exp,
-        services,
-        qualifications,
-      });
+      await updateDoctorProfile(doctor.id, { exp, services, qualifications });
       await onUpdate();
       showToast("Profile updated! ✅ Refreshing...");
       setTimeout(() => window.location.reload(), 1500);
