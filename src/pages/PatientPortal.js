@@ -616,14 +616,13 @@ export default function PatientPortal() {
                 ) : (
                   <div style={{ display:"grid", gap:12 }}>
                     {appointments.map(a => {
-  const isOnline = a.type === "Online";
-  const apptDoctor = doctors.find(d => d.id === a.doctorId);
-  return (
+                      const isOnline = a.type === "Online";
+                      return (
                         <Card key={a.id} style={{ padding:"16px 20px" }}>
                           <div style={{ display:"flex", gap:14, alignItems:"flex-start", flexWrap:"wrap" }}>
                             {/* Doctor photo in appointment card */}
-                           {(apptDoctor?.photo || a.doctorPhoto) ? (
-  <img src={apptDoctor?.photo || a.doctorPhoto} alt={a.doctorName}
+                            {a.doctorPhoto ? (
+                              <img src={a.doctorPhoto} alt={a.doctorName}
                                 style={{ width:50, height:50, borderRadius:"50%", objectFit:"cover",
                                   flexShrink:0, border:`2px solid ${T.border}` }}
                                 onError={e => { e.target.style.display="none"; }} />
