@@ -83,17 +83,7 @@ export default function DoctorDashboard() {
   const filteredAll = filterStatus === "All" ? appointments : appointments.filter(a => a.status === filterStatus);
 
   // Get all slots for a doctor (from clinics or old slots field)
-  const getDoctorSlots = () => {
-    if (!doctor) return [];
-    if (doctor.clinics && Array.isArray(doctor.clinics)) {
-      const allSlots = new Set();
-      doctor.clinics.forEach(c => {
-        if (Array.isArray(c.slots)) c.slots.forEach(s => allSlots.add(s));
-      });
-      return Array.from(allSlots).sort();
-    }
-    return Array.isArray(doctor.slots) ? doctor.slots : [];
-  };
+ 
 
   const nav = [
     ["dashboard", "📊", "Dashboard"],
