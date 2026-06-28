@@ -14,9 +14,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Safety timeout - stop loading after 5 seconds no matter what
     const timeout = setTimeout(() => setLoading(false), 5000);
-
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       clearTimeout(timeout);
       if (firebaseUser) {
@@ -25,7 +23,6 @@ export function AuthProvider({ children }) {
           const snap = await getDoc(doc(db, "users", firebaseUser.uid));
           setProfile(snap.exists() ? snap.data() : null);
         } catch(e) {
-          console.error("Profile load error:", e);
           setProfile(null);
         }
       } else {
@@ -34,7 +31,6 @@ export function AuthProvider({ children }) {
       }
       setLoading(false);
     });
-
     return () => { unsub(); clearTimeout(timeout); };
   }, []);
 
