@@ -289,6 +289,32 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
               <h3 style={{ margin:"0 0 16px", fontSize:15, fontWeight:700, color:T.text }}>
                 {clinics[activeClinic].isOnline?"💻":"🏥"} {clinics[activeClinic].name}
               </h3>
+
+              {/* Online Toggle */}
+              <div style={{ marginBottom:16, padding:"12px 14px", borderRadius:10,
+                background:clinics[activeClinic].isOnline?"#f0fdf4":"#fef2f2",
+                border:`1.5px solid ${clinics[activeClinic].isOnline?"#86efac":"#fca5a5"}`,
+                display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <div>
+                  <div style={{ fontWeight:700, fontSize:13, color:T.text }}>
+                    {clinics[activeClinic].isOnline ? "💻 Online Consultation — Active" : "💻 Online Consultation — Disabled"}
+                  </div>
+                  <div style={{ fontSize:11, color:T.muted, marginTop:2 }}>
+                    {clinics[activeClinic].isOnline ? "Patients can book online sessions" : "Patients cannot book online sessions"}
+                  </div>
+                </div>
+                <button onClick={() => {
+                    const u = JSON.parse(JSON.stringify(clinics));
+                    u[activeClinic].isOnline = !u[activeClinic].isOnline;
+                    setClinics(u);
+                  }}
+                  style={{ padding:"8px 18px", borderRadius:20, fontWeight:700, fontSize:13, cursor:"pointer",
+                    border:"none",
+                    background:clinics[activeClinic].isOnline?"#EF4444":"#16a34a",
+                    color:"#fff" }}>
+                  {clinics[activeClinic].isOnline ? "Disable" : "Enable"}
+                </button>
+              </div>
               {!clinics[activeClinic].isOnline && (
                 <div style={{ marginBottom:16 }}>
                   <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Clinic Address</label>
@@ -588,7 +614,7 @@ export default function DoctorDashboard() {
           {sidebarOpen && doctor?.clinics && (
             <div style={{ padding:"10px 12px",background:"rgba(255,255,255,0.07)",borderRadius:10,marginBottom:8 }}>
               <div style={{ fontSize:10,color:"rgba(255,255,255,0.45)",marginBottom:3 }}>Fees from</div>
-              <div style={{ fontSize:17,fontWeight:800,color:"#fff" }}>PKR {Math.min(...doctor.clinics.map(c=>Number(c.fee)||0)).toLocaleString()}</div>
+              <div style={{ fontSize:17,fontWeight:800,color:"#fff" }}>PKR {Math.min(...doctor.clinics.filter(c=>!c.isOnline).map(c=>Number(c.fee)||0).filter(f=>f>0)).toLocaleString()}</div>
             </div>
           )}
           <button onClick={logoutUser}
