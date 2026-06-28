@@ -238,7 +238,7 @@ export default function PatientPortal() {
                           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
                             <div style={{ fontSize:12, color:T.muted }}>⏳ {doc.exp} yrs exp</div>
                             <div style={{ fontSize:13, fontWeight:700, color:T.primary }}>
-                              From PKR {minFee.toLocaleString()}
+                             From PKR {minFee > 0 ? minFee.toLocaleString() : "—"}
                             </div>
                           </div>
                           <button onClick={() => startBooking(doc)}
