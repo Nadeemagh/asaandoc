@@ -334,7 +334,10 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                     style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`, fontSize:14, color:T.text, width:"100%", outline:"none", fontFamily:"inherit" }} />
                 </div>
               )}
-              <div style={{ marginBottom:16 }}>
+
+              {/* Hide all settings when online clinic is disabled */}
+              {(!clinics[activeClinic].name?.toLowerCase().includes("online") || clinics[activeClinic].isOnline) && (
+              <div>
                 <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Consultation Fee (PKR)</label>
                 <input type="number" value={clinics[activeClinic].fee||""} onChange={e=>updateFee(activeClinic,e.target.value)}
                   style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`, fontSize:14, color:T.text, width:200, outline:"none" }} />
@@ -389,12 +392,15 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                   })}
                 </div>
               </div>
+              {(!clinics[activeClinic].name?.toLowerCase().includes("online") || clinics[activeClinic].isOnline) && (
               <button onClick={saveSchedule} disabled={saving}
                 style={{ width:"100%", padding:"13px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
                   color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:14,
                   cursor:saving?"not-allowed":"pointer", opacity:saving?0.7:1 }}>
                 {saving?"Saving...":"💾 Save Clinic Schedule"}
               </button>
+              </div>
+              )}
             </Card>
           )}
         </div>
