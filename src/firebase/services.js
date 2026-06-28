@@ -194,3 +194,71 @@ export const updateDoctorProfile = async (doctorId, { exp, services, qualificati
     throw e;
   }
 };
+
+// ─── ADMIN FUNCTIONS ──────────────────────────────────────────────
+
+export const getAllUsers = async () => {
+  try {
+    const snap = await getDocs(collection(db, "users"));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.error("getAllUsers error:", e);
+    return [];
+  }
+};
+
+export const getAllAppointments = async () => {
+  try {
+    const snap = await getDocs(collection(db, "appointments"));
+    const appts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    appts.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    return appts;
+  } catch (e) {
+    console.error("getAllAppointments error:", e);
+    return [];
+  }
+};
+
+export const addDoctor = async (doctorData) => {
+  try {
+    const ref = await addDoc(collection(db, "doctors"), {
+      ...doctorData,
+      createdAt: serverTimestamp(),
+    });
+    return ref.id;
+  } catch (e) {
+    console.error("addDoctor error:", e);
+    throw e;
+  }
+};
+
+export const deleteDoctor = async (doctorId) => {
+  try {
+    const { deleteDoc } = await import("firebase/firestore");
+    await deleteDoc(doc(db, "doctors", doctorId));
+  } catch (e) {
+    console.error("deleteDoctor error:", e);
+    throw e;
+  }
+};
+
+export const updateUserPhone = async (uid, phone) => {
+  try {
+    await updateDoc(doc(db, "users", uid), { phone });
+  } catch (e) {
+    console.error("updateUserPhone error:", e);
+    throw e;
+  }
+};
+
+export const updateDoctorData = async (doctorId, data) => {
+  try {
+    await updateDoc(doc(db, "doctors", doctorId), {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.error("updateDoctorData error:", e);
+    throw e;
+  }
+};
