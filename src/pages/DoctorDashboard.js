@@ -262,7 +262,7 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
     <div>
       <h2 style={{ margin:"0 0 20px", fontSize:18, fontWeight:800, color:T.text }}>⚙️ Manage Schedule</h2>
       <div style={{ display:"flex", gap:8, marginBottom:20, borderBottom:`2px solid ${T.border}`, paddingBottom:12 }}>
-        {[["clinics","🏥","Clinic Schedule"],["profile","👨‍⚕️","Profile & Services"],["holidays","🏖️","Holidays"]].map(([tab,icon,label]) => (
+        {[["clinics","🏥","Clinic Schedule"],["profile","👨","Profile & Services"],["holidays","🏖️","Holidays"]].map(([tab,icon,label]) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             style={{ padding:"9px 18px", borderRadius:10, border:"none", cursor:"pointer", fontWeight:700, fontSize:13,
               background:activeTab===tab?T.primary:"transparent", color:activeTab===tab?"#fff":T.muted }}>
@@ -364,7 +364,7 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
 
       {activeTab === "profile" && (
         <Card style={{ marginBottom:20 }}>
-          <h3 style={{ margin:"0 0 20px", fontSize:15, fontWeight:700, color:T.text }}>👨‍⚕️ Profile & Services</h3>
+          <h3 style={{ margin:"0 0 20px", fontSize:15, fontWeight:700, color:T.text }}>👨 Profile & Services</h3>
           <div style={{ marginBottom:20 }}>
             <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Years of Experience</label>
             <input type="number" value={exp} onChange={e=>setExp(e.target.value)} placeholder="e.g. 25"
