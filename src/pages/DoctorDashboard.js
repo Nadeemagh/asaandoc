@@ -336,7 +336,7 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
               )}
 
               {/* Hide fee/schedule when online clinic is disabled */}
-              {(!clinics[activeClinic].name?.toLowerCase().includes("online") || clinics[activeClinic].isOnline) && (<>
+              {(!clinics[activeClinic].name?.toLowerCase().includes("online") || clinics[activeClinic].isOnline === true) && (<>
                 <div style={{ marginBottom:16 }}>
                   <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Consultation Fee (PKR)</label>
                   <input type="number" value={clinics[activeClinic].fee||""} onChange={e=>updateFee(activeClinic,e.target.value)}
@@ -633,7 +633,7 @@ export default function DoctorDashboard() {
               <div style={{ fontSize:17,fontWeight:800,color:"#fff" }}>
                 PKR {(() => {
                   const inPersonFees = doctor.clinics
-                    .filter(c => c.isOnline !== true)
+                    .filter(c => !c.name?.toLowerCase().includes("online"))
                     .map(c => Number(c.fee)||0)
                     .filter(f => f > 0);
                   return inPersonFees.length > 0 ? Math.min(...inPersonFees).toLocaleString() : "—";
