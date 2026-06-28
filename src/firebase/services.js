@@ -1,6 +1,6 @@
 // src/firebase/services.js
 import {
-  collection, doc, addDoc, updateDoc, getDocs,
+  collection, doc, addDoc, updateDoc, getDocs, deleteDoc,
   query, where, serverTimestamp, setDoc, getDoc,
 } from "firebase/firestore";
 import {
@@ -234,7 +234,6 @@ export const addDoctor = async (doctorData) => {
 
 export const deleteDoctor = async (doctorId) => {
   try {
-    const { deleteDoc } = await import("firebase/firestore");
     await deleteDoc(doc(db, "doctors", doctorId));
   } catch (e) {
     console.error("deleteDoctor error:", e);
