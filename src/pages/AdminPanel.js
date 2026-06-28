@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { T, Badge, Card, StatCard, Toast, Spinner } from "../components/UI";
 import { getDoctors, getAllUsers, getAllAppointments, addDoctor, deleteDoctor, updateUserPhone } from "../firebase/services";
+import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
 
 const formatTime = (t) => {
