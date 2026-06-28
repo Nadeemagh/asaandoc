@@ -367,10 +367,15 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
   const saveSchedule = async () => {
     setSaving(true);
     try {
+      console.log("Saving clinics:", JSON.stringify(clinics.map(c => ({
+        name: c.name, startTime: c.startTime, endTime: c.endTime, days: c.days, fee: c.fee
+      }))));
       await updateDoctorSchedule(doctor.id, clinics);
       await onUpdate();
-      showToast("Schedule updated successfully! ✅");
-    } catch {
+      showToast("Schedule updated! ✅ Refreshing...");
+      setTimeout(() => window.location.reload(), 1500);
+    } catch(e) {
+      console.error("Save error:", e);
       showToast("Failed to save. Try again.", "error");
     }
     setSaving(false);
