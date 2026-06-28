@@ -11,36 +11,16 @@ import {
 } from "firebase/auth";
 import { db, auth } from "./config";
 
-// ─── HELPER: Convert any Firebase value to plain JS number ────────
-const toNumber = (val) => {
+// ─── HELPER: Convert any value to plain JS number ─────────────────
+const toNum = (val) => {
   if (val === null || val === undefined) return 0;
   if (typeof val === "number") return val;
   if (typeof val === "string") return parseInt(val) || 0;
   if (typeof val === "object") {
-    // Firebase Timestamp or special type
     if (val.integerValue !== undefined) return parseInt(val.integerValue) || 0;
     if (val.doubleValue !== undefined) return parseFloat(val.doubleValue) || 0;
-    if (val.numberValue !== undefined) return Number(val.numberValue) || 0;
   }
   return Number(val) || 0;
-};
-
-
-
-// ─── HELPER: Normalize doctor data ────────────────────────────────
-const normalizeDoctor = (data, id) => {
-  const d = { id, ...data };
-  if (Array.isArray(d.clinics)) {
-    d.clinics = d.clinics.map(c => ({
-      ...c,
-      fee: typeof c.fee === "object" ? parseInt(c.fee?.integerValue || 0) : Number(c.fee) || 0,
-      days: Array.isArray(c.days) ? c.days : [],
-      slots: Array.isArray(c.slots) ? c.slots : [],
-      isOnline: Boolean(c.isOnline),
-    }));
-    console.log("Clinics after normalize:", JSON.stringify(d.clinics.map(c => ({name:c.name, fee:c.fee}))));
-  }
-  return d;
 };
 
 // ─── AUTH ─────────────────────────────────────────────────────────
@@ -74,17 +54,24 @@ export const getUserProfile = async (uid) => {
 export const getDoctors = async () => {
   try {
     const snap = await getDocs(collection(db, "doctors"));
-    const doctors = snap.docs.map(d => {
-      const normalized = normalizeDoctor(d.data(), d.id);
-      console.log("Doctor loaded:", normalized.name);
-      if (normalized.clinics) {
-        normalized.clinics.forEach(c => {
-          console.log(`  Clinic: ${c.name}, fee: ${c.fee}, type: ${typeof c.fee}`);
-        });
+    return snap.docs.map(d => {
+      const data = d.data();
+      // Normalize clinics — convert fees to plain numbers
+      if (Array.isArray(data.clinics)) {
+        data.clinics = data.clinics.map(clinic => ({
+          ...clinic,
+          fee: toNum(clinic.fee),
+          days: Array.isArray(clinic.days) ? clinic.days : [],
+          slots: Array.isArray(clinic.slots) ? clinic.slots : [],
+          isOnline: clinic.isOnline === true,
+        }));
       }
-      return normalized;
+      if (data.fee !== undefined) {
+        data.fee = toNum(data.fee);
+      }
+      console.log("Loaded doctor:", data.name, "clinics:", data.clinics?.map(c => `${c.name}:${c.fee}`));
+      return { id: d.id, ...data };
     });
-    return doctors;
   } catch (e) {
     console.error("getDoctors error:", e);
     return [];
@@ -114,12 +101,9 @@ export const getAppointmentsByPatient = async (patientUid) => {
       where("patientUid", "==", patientUid)
     );
     const snap = await getDocs(q);
-    const appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    appointments.sort((a, b) => {
-      if (a.date && b.date) return b.date.localeCompare(a.date);
-      return 0;
-    });
-    return appointments;
+    const appts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    appts.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    return appts;
   } catch (e) {
     console.error("getAppointmentsByPatient error:", e);
     return [];
@@ -133,12 +117,9 @@ export const getAppointmentsByDoctor = async (doctorId) => {
       where("doctorId", "==", doctorId)
     );
     const snap = await getDocs(q);
-    const appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    appointments.sort((a, b) => {
-      if (a.date && b.date) return a.date.localeCompare(b.date);
-      return 0;
-    });
-    return appointments;
+    const appts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    appts.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    return appts;
   } catch (e) {
     console.error("getAppointmentsByDoctor error:", e);
     return [];
@@ -157,6 +138,4 @@ export const updateAppointmentStatus = async (appointmentId, status) => {
   }
 };
 
-export const seedDoctors = async () => {
-  return; // Doctors added manually via Firebase Console
-};
+export const seedDoctors = async () => { return; };
