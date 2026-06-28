@@ -39,14 +39,18 @@ const normalizeClinic = (clinic) => {
 
 // ─── HELPER: Normalize doctor data ────────────────────────────────
 const normalizeDoctor = (data, id) => {
-  const doc = { id, ...data };
-  if (Array.isArray(doc.clinics)) {
-    doc.clinics = doc.clinics.map(normalizeClinic);
+  const d = { id, ...data };
+  if (Array.isArray(d.clinics)) {
+    d.clinics = d.clinics.map(c => ({
+      ...c,
+      fee: typeof c.fee === "object" ? parseInt(c.fee?.integerValue || 0) : Number(c.fee) || 0,
+      days: Array.isArray(c.days) ? c.days : [],
+      slots: Array.isArray(c.slots) ? c.slots : [],
+      isOnline: Boolean(c.isOnline),
+    }));
+    console.log("Clinics after normalize:", JSON.stringify(d.clinics.map(c => ({name:c.name, fee:c.fee}))));
   }
-  if (doc.fee !== undefined) {
-    doc.fee = toNumber(doc.fee);
-  }
-  return doc;
+  return d;
 };
 
 // ─── AUTH ─────────────────────────────────────────────────────────
