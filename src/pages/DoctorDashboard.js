@@ -525,12 +525,42 @@ export default function DoctorDashboard() {
                 <p style={{ margin:0, color:T.muted, fontSize:13 }}>Here's what's happening with your appointments today.</p>
               </div>
 
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:12, marginBottom:24 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:12, marginBottom:16 }}>
                 <StatCard label="Today"     value={todayAppts.length} icon="📅" color={T.primary}  sub="appointments" />
                 <StatCard label="Upcoming"  value={upcoming.length}   icon="⏳" color={T.accent}   sub="confirmed" />
                 <StatCard label="Pending"   value={pending.length}    icon="🔔" color={T.warn}     sub="need action" />
                 <StatCard label="Completed" value={completed.length}  icon="✅" color="#8B5CF6"    sub="all time" />
               </div>
+
+              {/* Today's Fee Summary Banner */}
+              {todayAppts.length > 0 && (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:12, marginBottom:24 }}>
+                  <div style={{ padding:"16px 20px", borderRadius:12, background:"linear-gradient(135deg,#16a34a,#15803d)",
+                    color:"#fff", boxShadow:"0 4px 14px rgba(22,163,74,0.3)" }}>
+                    <div style={{ fontSize:11, fontWeight:700, opacity:0.8, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:6 }}>Today's Total Fees</div>
+                    <div style={{ fontSize:26, fontWeight:900 }}>
+                      PKR {todayAppts.reduce((s,a) => s + Number(a.clinicFee||0), 0).toLocaleString()}
+                    </div>
+                    <div style={{ fontSize:11, opacity:0.75, marginTop:4 }}>{todayAppts.length} appointment{todayAppts.length>1?"s":""}</div>
+                  </div>
+                  <div style={{ padding:"16px 20px", borderRadius:12, background:"linear-gradient(135deg,#218EB6,#155f7a)",
+                    color:"#fff", boxShadow:"0 4px 14px rgba(33,142,182,0.3)" }}>
+                    <div style={{ fontSize:11, fontWeight:700, opacity:0.8, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:6 }}>Collected Today</div>
+                    <div style={{ fontSize:26, fontWeight:900 }}>
+                      PKR {todayAppts.filter(a=>a.status==="completed").reduce((s,a) => s + Number(a.clinicFee||0), 0).toLocaleString()}
+                    </div>
+                    <div style={{ fontSize:11, opacity:0.75, marginTop:4 }}>{todayAppts.filter(a=>a.status==="completed").length} completed</div>
+                  </div>
+                  <div style={{ padding:"16px 20px", borderRadius:12, background:"linear-gradient(135deg,#F59E0B,#d97706)",
+                    color:"#fff", boxShadow:"0 4px 14px rgba(245,158,11,0.3)" }}>
+                    <div style={{ fontSize:11, fontWeight:700, opacity:0.8, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:6 }}>Pending Fees</div>
+                    <div style={{ fontSize:26, fontWeight:900 }}>
+                      PKR {todayAppts.filter(a=>a.status!=="completed"&&a.status!=="cancelled").reduce((s,a) => s + Number(a.clinicFee||0), 0).toLocaleString()}
+                    </div>
+                    <div style={{ fontSize:11, opacity:0.75, marginTop:4 }}>not yet collected</div>
+                  </div>
+                </div>
+              )}
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
                 <Card>
