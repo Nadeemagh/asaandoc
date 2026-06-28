@@ -180,3 +180,17 @@ export const removeHoliday = async (doctorId, date) => {
     throw e;
   }
 };
+
+export const updateDoctorProfile = async (doctorId, { exp, services, qualifications }) => {
+  try {
+    await updateDoc(doc(db, "doctors", doctorId), {
+      exp: Number(exp) || 0,
+      services: services || "",
+      qualifications: qualifications || "",
+      updatedAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.error("updateDoctorProfile error:", e);
+    throw e;
+  }
+};
