@@ -533,7 +533,7 @@ export default function DoctorDashboard() {
               </div>
 
               {/* Today's Fee Summary Banner */}
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:12, marginBottom:24 }}>
+              <div style={{ display:"flex", justifyContent:"flex-end", gap:12, marginBottom:24 }}>
                   <div style={{ padding:"16px 20px", borderRadius:12, background:"linear-gradient(135deg,#16a34a,#15803d)",
                     color:"#fff", boxShadow:"0 4px 14px rgba(22,163,74,0.3)" }}>
                     <div style={{ fontSize:11, fontWeight:700, opacity:0.8, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:6 }}>Today's Total Fees</div>
