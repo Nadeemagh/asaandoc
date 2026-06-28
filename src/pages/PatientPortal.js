@@ -217,7 +217,11 @@ export default function PatientPortal() {
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))", gap:12 }}>
                     {doctors.slice(0,4).map(doc => {
                       const clinics = getDoctorClinics(doc);
-                      const minFee = Math.min(...clinics.map(c => Number(c.fee) || 0));
+                      const minFee = Math.min(...clinics.map(c => {
+  const f = c.fee;
+  if (typeof f === "object" && f !== null) return Number(f.integerValue || f) || 0;
+  return Number(f) || 0;
+}));
                       return (
                         <div key={doc.id} style={{ background:T.white, borderRadius:14, padding:16,
                           boxShadow:"0 2px 10px rgba(0,0,0,0.06)", border:`1.5px solid ${T.border}` }}>
