@@ -117,9 +117,13 @@ export default function PatientPortal() {
   const getAvailableDates = (clinic) => {
     if (!clinic) return [];
     const dates = [];
+    const holidays = selectedDoctor?.holidays?.map(h => h.date) || [];
     for (let i = 1; i <= 14; i++) {
       const d = addDays(today, i);
-      if (clinic.days?.includes(DAYS[d.getDay()])) dates.push(fmtDate(d));
+      const df = fmtDate(d);
+      if (clinic.days?.includes(DAYS[d.getDay()]) && !holidays.includes(df)) {
+        dates.push(df);
+      }
     }
     return dates;
   };
