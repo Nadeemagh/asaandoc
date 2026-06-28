@@ -346,12 +346,11 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
     setClinics(updated);
   };
 
-  const updateTime = (clinicIdx, field, value) => {
-    const updated = [...clinics];
+  onst updateTime = (clinicIdx, field, value) => {
+    const updated = JSON.parse(JSON.stringify(clinics));
     updated[clinicIdx][field] = value;
     setClinics(updated);
   };
-
   const saveSchedule = async () => {
     setSaving(true);
     try {
