@@ -326,7 +326,8 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                 </button>
               </div>
               )}
-              {!clinics[activeClinic].isOnline && (
+              {/* Address - hide for online clinic */}
+              {!clinics[activeClinic].name?.toLowerCase().includes("online") && (
                 <div style={{ marginBottom:16 }}>
                   <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Clinic Address</label>
                   <input value={clinics[activeClinic].address||""} onChange={e=>updateAddress(activeClinic,e.target.value)}
@@ -625,7 +626,15 @@ export default function DoctorDashboard() {
           {sidebarOpen && doctor?.clinics && (
             <div style={{ padding:"10px 12px",background:"rgba(255,255,255,0.07)",borderRadius:10,marginBottom:8 }}>
               <div style={{ fontSize:10,color:"rgba(255,255,255,0.45)",marginBottom:3 }}>Fees from</div>
-              <div style={{ fontSize:17,fontWeight:800,color:"#fff" }}>PKR {Math.min(...doctor.clinics.filter(c=>!c.isOnline).map(c=>Number(c.fee)||0).filter(f=>f>0)).toLocaleString()}</div>
+              <div style={{ fontSize:17,fontWeight:800,color:"#fff" }}>
+                PKR {(() => {
+                  const inPersonFees = doctor.clinics
+                    .filter(c => c.isOnline !== true)
+                    .map(c => Number(c.fee)||0)
+                    .filter(f => f > 0);
+                  return inPersonFees.length > 0 ? Math.min(...inPersonFees).toLocaleString() : "—";
+                })()}
+              </div>
             </div>
           )}
           <button onClick={logoutUser}
