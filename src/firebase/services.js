@@ -25,17 +25,7 @@ const toNumber = (val) => {
   return Number(val) || 0;
 };
 
-// ─── HELPER: Normalize clinic data from Firebase ──────────────────
-const normalizeClinic = (clinic) => {
-  if (!clinic) return clinic;
-  return {
-    ...clinic,
-    fee: toNumber(clinic.fee),
-    days: Array.isArray(clinic.days) ? clinic.days : [],
-    slots: Array.isArray(clinic.slots) ? clinic.slots : [],
-    isOnline: clinic.isOnline === true || clinic.isOnline === "true",
-  };
-};
+
 
 // ─── HELPER: Normalize doctor data ────────────────────────────────
 const normalizeDoctor = (data, id) => {
