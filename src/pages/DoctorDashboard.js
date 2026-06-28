@@ -304,10 +304,19 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                     {clinics[activeClinic].isOnline ? "Patients can book online sessions" : "Patients cannot book online sessions"}
                   </div>
                 </div>
-                <button onClick={() => {
+                <button onClick={async () => {
                     const u = JSON.parse(JSON.stringify(clinics));
                     u[activeClinic].isOnline = !u[activeClinic].isOnline;
                     setClinics(u);
+                    setSaving(true);
+                    try {
+                      await updateDoctorSchedule(doctor.id, u);
+                      await onUpdate();
+                      showToast(u[activeClinic].isOnline ? "Online Consultation enabled! ✅" : "Online Consultation disabled! ✅");
+                    } catch {
+                      showToast("Failed to save.", "error");
+                    }
+                    setSaving(false);
                   }}
                   style={{ padding:"8px 18px", borderRadius:20, fontWeight:700, fontSize:13, cursor:"pointer",
                     border:"none",
