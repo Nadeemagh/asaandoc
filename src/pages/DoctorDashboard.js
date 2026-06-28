@@ -321,6 +321,12 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
   const [newHolidayReason, setNewHolidayReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [activeClinic, setActiveClinic] = useState(0);
+  const [activeTab, setActiveTab] = useState("clinics"); // clinics | profile | holidays
+
+  // Profile fields
+  const [exp, setExp] = useState(doctor?.exp || "");
+  const [services, setServices] = useState(doctor?.services || "");
+  const [qualifications, setQualifications] = useState(doctor?.qualifications || "");
 
   // Sync when doctor data refreshes
   useEffect(() => {
@@ -330,9 +336,37 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
     if (doctor?.holidays) {
       setHolidays(doctor.holidays);
     }
+    if (doctor?.exp) setExp(doctor.exp);
+    if (doctor?.services) setServices(doctor.services);
+    if (doctor?.qualifications) setQualifications(doctor.qualifications);
   }, [doctor]);
 
-  const fmtDate = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-PK",
+  const updateAddress = (clinicIdx, value) => {
+    const updated = JSON.parse(JSON.stringify(clinics));
+    updated[clinicIdx].address = value;
+    setClinics(updated);
+  };
+
+  const saveProfile = async () => {
+    setSaving(true);
+    try {
+      await updateDoctorSchedule(doctor.id, clinics);
+      const { updateDoc, doc: fsDoc, serverTimestamp } = await import("firebase/firestore");
+      const { db } = await import("../firebase/config");
+      await updateDoc(fsDoc(db, "doctors", doctor.id), {
+        exp: Number(exp) || doctor.exp,
+        services,
+        qualifications,
+      });
+      await onUpdate();
+      showToast("Profile updated! ✅ Refreshing...");
+      setTimeout(() => window.location.reload(), 1500);
+    } catch(e) {
+      console.error("Profile save error:", e);
+      showToast("Failed to save. Try again.", "error");
+    }
+    setSaving(false);
+  };
     { weekday:"short", year:"numeric", month:"short", day:"numeric" });
 
   const toggleDay = (clinicIdx, day) => {
@@ -413,118 +447,235 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
     <div>
       <h2 style={{ margin:"0 0 20px", fontSize:18, fontWeight:800, color:T.text }}>⚙️ Manage Schedule</h2>
 
-      {/* Clinic Tabs */}
-      <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap" }}>
-        {clinics.map((c, i) => (
-          <button key={i} onClick={() => setActiveClinic(i)}
-            style={{ padding:"8px 16px", borderRadius:10, border:`2px solid ${activeClinic===i?T.primary:T.border}`,
-              background:activeClinic===i?T.primaryLight:T.white, color:activeClinic===i?T.primary:T.muted,
-              fontWeight:600, fontSize:13, cursor:"pointer" }}>
-            {c.isOnline?"💻":"🏥"} {c.name?.split(" ").slice(0,2).join(" ")}
+      {/* Main Tabs */}
+      <div style={{ display:"flex", gap:8, marginBottom:20, borderBottom:`2px solid ${T.border}`, paddingBottom:12 }}>
+        {[["clinics","🏥","Clinic Schedule"],["profile","👨‍⚕️","Profile & Services"],["holidays","🏖️","Holidays"]].map(([tab,icon,label]) => (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            style={{ padding:"9px 18px", borderRadius:10, border:"none", cursor:"pointer",
+              fontWeight:700, fontSize:13,
+              background:activeTab===tab?T.primary:"transparent",
+              color:activeTab===tab?"#fff":T.muted }}>
+            {icon} {label}
           </button>
         ))}
       </div>
 
-      {clinics[activeClinic] && (
-        <Card style={{ marginBottom:20 }}>
-          <h3 style={{ margin:"0 0 4px", fontSize:15, fontWeight:700, color:T.text }}>
-            {clinics[activeClinic].isOnline?"💻":"🏥"} {clinics[activeClinic].name}
-          </h3>
-          <div style={{ fontSize:12, color:T.muted, marginBottom:20 }}>📍 {clinics[activeClinic].address}</div>
+      {/* CLINIC SCHEDULE TAB */}
+      {activeTab === "clinics" && (
+        <div>
+          {/* Clinic Tabs */}
+          <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap" }}>
+            {clinics.map((c, i) => (
+              <button key={i} onClick={() => setActiveClinic(i)}
+                style={{ padding:"8px 16px", borderRadius:10, border:`2px solid ${activeClinic===i?T.primary:T.border}`,
+                  background:activeClinic===i?T.primaryLight:T.white, color:activeClinic===i?T.primary:T.muted,
+                  fontWeight:600, fontSize:13, cursor:"pointer" }}>
+                {c.isOnline?"💻":"🏥"} {c.name?.split(" ").slice(0,2).join(" ")}
+              </button>
+            ))}
+          </div>
 
-          {/* Fee */}
+          {clinics[activeClinic] && (
+            <Card style={{ marginBottom:20 }}>
+              <h3 style={{ margin:"0 0 4px", fontSize:15, fontWeight:700, color:T.text }}>
+                {clinics[activeClinic].isOnline?"💻":"🏥"} {clinics[activeClinic].name}
+              </h3>
+
+              {/* Address */}
+              {!clinics[activeClinic].isOnline && (
+                <div style={{ marginBottom:16, marginTop:12 }}>
+                  <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+                    textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>
+                    Clinic Address
+                  </label>
+                  <input value={clinics[activeClinic].address || ""}
+                    onChange={e => updateAddress(activeClinic, e.target.value)}
+                    placeholder="Enter clinic address..."
+                    style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
+                      fontSize:14, color:T.text, width:"100%", outline:"none", fontFamily:"inherit" }} />
+                </div>
+              )}
+
+              {/* Fee */}
+              <div style={{ marginBottom:20 }}>
+                <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+                  textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>
+                  Consultation Fee (PKR)
+                </label>
+                <input type="number" value={clinics[activeClinic].fee || ""}
+                  onChange={e => updateFee(activeClinic, e.target.value)}
+                  style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
+                    fontSize:14, color:T.text, width:200, outline:"none" }} />
+              </div>
+
+              {/* Timings */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
+                <div>
+                  <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+                    textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Start Time</label>
+                  <select value={clinics[activeClinic].startTime || ""}
+                    onChange={e => updateTime(activeClinic, "startTime", e.target.value)}
+                    style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
+                      fontSize:14, color:T.text, width:"100%", outline:"none" }}>
+                    {ALL_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+                    textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>End Time</label>
+                  <select value={clinics[activeClinic].endTime || ""}
+                    onChange={e => updateTime(activeClinic, "endTime", e.target.value)}
+                    style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
+                      fontSize:14, color:T.text, width:"100%", outline:"none" }}>
+                    {ALL_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Days */}
+              <div style={{ marginBottom:20 }}>
+                <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+                  textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>
+                  Available Days
+                </label>
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                  {ALL_DAYS.map(day => {
+                    const active = clinics[activeClinic].days?.includes(day);
+                    return (
+                      <button key={day} onClick={() => toggleDay(activeClinic, day)}
+                        style={{ padding:"8px 16px", borderRadius:20, fontWeight:700, fontSize:13, cursor:"pointer",
+                          border:`2px solid ${active?T.primary:T.border}`,
+                          background:active?T.primary:T.white,
+                          color:active?"#fff":T.muted, transition:"all 0.15s" }}>
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Time Slots */}
+              <div style={{ marginBottom:20 }}>
+                <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+                  textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>
+                  Time Slots (select all available)
+                </label>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))", gap:8 }}>
+                  {ALL_SLOTS.map(slot => {
+                    const active = clinics[activeClinic].slots?.includes(slot);
+                    const hour = parseInt(slot.split(":")[0]);
+                    const label = `${hour % 12 || 12}:${slot.split(":")[1]} ${hour >= 12 ? "PM" : "AM"}`;
+                    return (
+                      <button key={slot} onClick={() => toggleSlot(activeClinic, slot)}
+                        style={{ padding:"8px 6px", borderRadius:8, fontWeight:600, fontSize:12, cursor:"pointer",
+                          border:`2px solid ${active?T.primary:T.border}`,
+                          background:active?T.primaryLight:T.white,
+                          color:active?T.primary:T.muted, transition:"all 0.15s" }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button onClick={saveSchedule} disabled={saving}
+                style={{ width:"100%", padding:"13px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
+                  color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:14,
+                  cursor:saving?"not-allowed":"pointer", opacity:saving?0.7:1 }}>
+                {saving ? "Saving..." : "💾 Save Clinic Schedule"}
+              </button>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* PROFILE & SERVICES TAB */}
+      {activeTab === "profile" && (
+        <Card style={{ marginBottom:20 }}>
+          <h3 style={{ margin:"0 0 20px", fontSize:15, fontWeight:700, color:T.text }}>👨‍⚕️ Profile & Services</h3>
+
+          {/* Experience */}
           <div style={{ marginBottom:20 }}>
             <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
               textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>
-              Consultation Fee (PKR)
+              Years of Experience
             </label>
-            <input type="number" value={clinics[activeClinic].fee || ""}
-              onChange={e => updateFee(activeClinic, e.target.value)}
+            <input type="number" value={exp}
+              onChange={e => setExp(e.target.value)}
+              placeholder="e.g. 25"
               style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
-                fontSize:14, color:T.text, width:200, outline:"none" }} />
+                fontSize:14, color:T.text, width:150, outline:"none" }} />
           </div>
 
-          {/* Timings */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
-            <div>
-              <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
-                textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Start Time</label>
-              <select value={clinics[activeClinic].startTime || ""}
-                onChange={e => updateTime(activeClinic, "startTime", e.target.value)}
-                style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
-                  fontSize:14, color:T.text, width:"100%", outline:"none" }}>
-                {ALL_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
-                textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>End Time</label>
-              <select value={clinics[activeClinic].endTime || ""}
-                onChange={e => updateTime(activeClinic, "endTime", e.target.value)}
-                style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
-                  fontSize:14, color:T.text, width:"100%", outline:"none" }}>
-                {ALL_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Days */}
+          {/* Qualifications */}
           <div style={{ marginBottom:20 }}>
             <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
-              textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>
-              Available Days
+              textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>
+              Qualifications & Degrees
             </label>
-            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-              {ALL_DAYS.map(day => {
-                const active = clinics[activeClinic].days?.includes(day);
-                return (
-                  <button key={day} onClick={() => toggleDay(activeClinic, day)}
-                    style={{ padding:"8px 16px", borderRadius:20, fontWeight:700, fontSize:13, cursor:"pointer",
-                      border:`2px solid ${active?T.primary:T.border}`,
-                      background:active?T.primary:T.white,
-                      color:active?"#fff":T.muted, transition:"all 0.15s" }}>
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
+            <textarea value={qualifications}
+              onChange={e => setQualifications(e.target.value)}
+              placeholder="e.g. MBBS, FCPS (Medicine), Fellowship in Diabetes&#10;University of Health Sciences, Lahore"
+              rows={4}
+              style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
+                fontSize:14, color:T.text, width:"100%", outline:"none",
+                fontFamily:"inherit", resize:"vertical" }} />
           </div>
 
-          {/* Time Slots */}
-          <div style={{ marginBottom:20 }}>
+          {/* Services */}
+          <div style={{ marginBottom:24 }}>
             <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
-              textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>
-              Time Slots (select all available)
+              textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>
+              Services Offered
             </label>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))", gap:8 }}>
-              {ALL_SLOTS.map(slot => {
-                const active = clinics[activeClinic].slots?.includes(slot);
-                const hour = parseInt(slot.split(":")[0]);
-                const label = `${hour % 12 || 12}:${slot.split(":")[1]} ${hour >= 12 ? "PM" : "AM"}`;
-                return (
-                  <button key={slot} onClick={() => toggleSlot(activeClinic, slot)}
-                    style={{ padding:"8px 6px", borderRadius:8, fontWeight:600, fontSize:12, cursor:"pointer",
-                      border:`2px solid ${active?T.primary:T.border}`,
-                      background:active?T.primaryLight:T.white,
-                      color:active?T.primary:T.muted, transition:"all 0.15s" }}>
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
+            <textarea value={services}
+              onChange={e => setServices(e.target.value)}
+              placeholder="e.g. Diabetes Management&#10;Thyroid Disorders&#10;Obesity Treatment&#10;Hormonal Disorders&#10;Blood Sugar Control"
+              rows={6}
+              style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`,
+                fontSize:14, color:T.text, width:"100%", outline:"none",
+                fontFamily:"inherit", resize:"vertical" }} />
+            <div style={{ fontSize:11, color:T.muted, marginTop:6 }}>Enter each service on a new line</div>
           </div>
 
-          <button onClick={saveSchedule} disabled={saving}
+          {/* Preview */}
+          {(qualifications || services) && (
+            <div style={{ padding:"16px", background:T.bg, borderRadius:10, marginBottom:20, border:`1.5px solid ${T.border}` }}>
+              <div style={{ fontSize:12, fontWeight:700, color:T.muted, marginBottom:10, textTransform:"uppercase" }}>Preview</div>
+              {qualifications && (
+                <div style={{ marginBottom:12 }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:T.text, marginBottom:6 }}>🎓 Qualifications</div>
+                  {qualifications.split("\n").filter(q=>q.trim()).map((q,i) => (
+                    <div key={i} style={{ fontSize:12, color:T.muted, padding:"3px 0" }}>• {q}</div>
+                  ))}
+                </div>
+              )}
+              {services && (
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:T.text, marginBottom:6 }}>🩺 Services</div>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                    {services.split("\n").filter(s=>s.trim()).map((s,i) => (
+                      <span key={i} style={{ padding:"4px 10px", background:T.primaryLight, color:T.primary,
+                        borderRadius:20, fontSize:12, fontWeight:600 }}>{s.trim()}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <button onClick={saveProfile} disabled={saving}
             style={{ width:"100%", padding:"13px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
               color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:14,
               cursor:saving?"not-allowed":"pointer", opacity:saving?0.7:1 }}>
-            {saving ? "Saving..." : "💾 Save Schedule Changes"}
+            {saving ? "Saving..." : "💾 Save Profile & Services"}
           </button>
         </Card>
       )}
 
-      {/* Holidays */}
-      <Card>
+      {/* HOLIDAYS TAB */}
+      {activeTab === "holidays" && (
+        <Card>
         <h3 style={{ margin:"0 0 16px", fontSize:15, fontWeight:700, color:T.text }}>
           🏖️ Mark Holidays / Days Off
         </h3>
@@ -580,7 +731,8 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
             ))}
           </div>
         )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }
@@ -1317,6 +1469,25 @@ export default function DoctorDashboard() {
                       <div style={{ fontWeight:800, fontSize:17, color:T.text }}>{profile?.name||doctor.name}</div>
                       <div style={{ fontSize:14, color:T.primary, fontWeight:600 }}>{doctor.specialty}</div>
                       <div style={{ fontSize:13, color:T.muted, marginTop:4 }}>⏳ {doctor.exp} years experience</div>
+                      {doctor.qualifications && (
+                        <div style={{ marginTop:10 }}>
+                          <div style={{ fontSize:12, fontWeight:700, color:T.text, marginBottom:6 }}>🎓 Qualifications</div>
+                          {doctor.qualifications.split("\n").filter(q=>q.trim()).map((q,i) => (
+                            <div key={i} style={{ fontSize:12, color:T.muted, padding:"2px 0" }}>• {q}</div>
+                          ))}
+                        </div>
+                      )}
+                      {doctor.services && (
+                        <div style={{ marginTop:10 }}>
+                          <div style={{ fontSize:12, fontWeight:700, color:T.text, marginBottom:6 }}>🩺 Services</div>
+                          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                            {doctor.services.split("\n").filter(s=>s.trim()).map((s,i) => (
+                              <span key={i} style={{ padding:"4px 10px", background:T.primaryLight,
+                                color:T.primary, borderRadius:20, fontSize:11, fontWeight:600 }}>{s.trim()}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {doctor.clinics && Array.isArray(doctor.clinics) && (
                         <div style={{ marginTop:10 }}>
                           <div style={{ fontSize:12, fontWeight:700, color:T.text, marginBottom:6 }}>🏥 Clinic Locations:</div>
