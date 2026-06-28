@@ -1,6 +1,6 @@
 // src/pages/PatientPortal.js
 import { useState, useEffect, useCallback } from "react";
-import { T, Badge, Card, StatCard, Toast, Spinner, inputStyle, labelStyle } from "../components/UI";
+import { T, Badge, Avatar, Card, StatCard, Toast, Spinner, inputStyle, labelStyle } from "../components/UI";
 import { getDoctors, bookAppointment, getAppointmentsByPatient, updateAppointmentStatus } from "../firebase/services";
 import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
@@ -19,6 +19,7 @@ const formatTime = (t) => {
   return `${hour12}:${m} ${ampm}`;
 };
 
+// Safely parse any fee format from Firebase
 const parseFee = (fee) => {
   if (fee === null || fee === undefined) return 0;
   if (typeof fee === "number") return fee;
@@ -28,37 +29,6 @@ const parseFee = (fee) => {
     if (fee.doubleValue !== undefined) return parseFloat(fee.doubleValue) || 0;
   }
   return parseInt(String(fee)) || 0;
-};
-
-// Doctor Photo Component — shows real photo or colored initials fallback
-const DoctorPhoto = ({ doc, size = 44 }) => {
-  const [imgError, setImgError] = useState(false);
-  if (doc.photo && !imgError) {
-    return (
-      <img
-        src={doc.photo}
-        alt={doc.name}
-        onError={() => setImgError(true)}
-        style={{
-          width: size, height: size, borderRadius: "50%",
-          objectFit: "cover", flexShrink: 0,
-          border: `2px solid ${T.border}`,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-        }}
-      />
-    );
-  }
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: "50%",
-      background: doc.color || T.primary, flexShrink: 0,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      color: "#fff", fontWeight: 800, fontSize: size * 0.35,
-      boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-    }}>
-      {(doc.avatar || doc.name?.charAt(0) || "D")}
-    </div>
-  );
 };
 
 export default function PatientPortal() {
@@ -109,7 +79,9 @@ export default function PatientPortal() {
       days: Array.isArray(doc.available) ? doc.available : [],
       slots: Array.isArray(doc.slots) ? doc.slots : [],
       fee: doc.fee || 0,
-      startTime: "", endTime: "", isOnline: false,
+      startTime: "",
+      endTime: "",
+      isOnline: false,
     }];
   };
 
@@ -124,8 +96,12 @@ export default function PatientPortal() {
   };
 
   const bookedSlots = appointments
-    .filter(a => a.doctorId === selectedDoctor?.id && a.clinicName === selectedClinic?.name
-      && a.date === form.date && a.status !== "cancelled")
+    .filter(a =>
+      a.doctorId === selectedDoctor?.id &&
+      a.clinicName === selectedClinic?.name &&
+      a.date === form.date &&
+      a.status !== "cancelled"
+    )
     .map(a => a.slot);
 
   const handleBook = async () => {
@@ -137,7 +113,6 @@ export default function PatientPortal() {
         doctorId: selectedDoctor.id,
         doctorName: selectedDoctor.name,
         doctorSpecialty: selectedDoctor.specialty,
-        doctorPhoto: selectedDoctor.photo || "",
         clinicName: selectedClinic.name,
         clinicAddress: selectedClinic.address || "",
         clinicFee: fee,
@@ -167,7 +142,9 @@ export default function PatientPortal() {
       await updateAppointmentStatus(id, "cancelled");
       setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: "cancelled" } : a));
       showToast("Appointment cancelled.");
-    } catch { showToast("Failed to cancel.", "error"); }
+    } catch {
+      showToast("Failed to cancel.", "error");
+    }
   };
 
   const startBooking = (doc) => {
@@ -226,7 +203,9 @@ export default function PatientPortal() {
                   <h1 style={{ margin:"0 0 8px", fontSize:24, fontWeight:900, lineHeight:1.2 }}>
                     Your Health, Our Priority 💙
                   </h1>
-                  <p style={{ margin:"0 0 4px", opacity:0.7, fontSize:13, fontFamily:"serif" }}>صحت کا آسان راستہ</p>
+                  <p style={{ margin:"0 0 4px", opacity:0.7, fontSize:13, fontFamily:"serif" }}>
+                    صحت کا آسان راستہ
+                  </p>
                   <p style={{ margin:"0 0 20px", opacity:0.8, fontSize:13 }}>
                     Book consultations with top specialists across Pakistan.
                   </p>
@@ -254,29 +233,29 @@ export default function PatientPortal() {
                       const fees = clinics.map(c => parseFee(c.fee)).filter(f => f > 0);
                       const minFee = fees.length > 0 ? Math.min(...fees) : 0;
                       return (
-                        <div key={doc.id} style={{ background:T.white, borderRadius:14, overflow:"hidden",
+                        <div key={doc.id} style={{ background:T.white, borderRadius:14, padding:16,
                           boxShadow:"0 2px 10px rgba(0,0,0,0.06)", border:`1.5px solid ${T.border}` }}>
-                          {/* Doctor photo banner */}
-                          <div style={{ height:100, background:`linear-gradient(135deg,${doc.color||T.primary}22,${doc.color||T.primary}44)`,
-                            display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>
-                            <DoctorPhoto doc={doc} size={80} />
-                          </div>
-                          <div style={{ padding:"12px 16px 16px" }}>
-                            <div style={{ fontWeight:700, fontSize:14, color:T.text, textAlign:"center", marginBottom:2 }}>{doc.name}</div>
-                            <div style={{ fontSize:12, color:T.primary, fontWeight:600, textAlign:"center", marginBottom:10 }}>{doc.specialty}</div>
-                            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-                              <div style={{ fontSize:12, color:T.muted }}>🏥 {clinics.length} location{clinics.length>1?"s":""}</div>
-                              <div style={{ fontSize:12, color:T.muted }}>⏳ {doc.exp} yrs</div>
+                          <div style={{ display:"flex", gap:12, alignItems:"center", marginBottom:12 }}>
+                            <Avatar initials={doc.avatar||"DR"} color={doc.color||T.primary} size={44} />
+                            <div>
+                              <div style={{ fontWeight:700, fontSize:13, color:T.text }}>{doc.name}</div>
+                              <div style={{ fontSize:12, color:T.muted }}>{doc.specialty}</div>
                             </div>
-                            <div style={{ fontSize:13, fontWeight:700, color:T.primary, textAlign:"center", marginBottom:12 }}>
+                          </div>
+                          <div style={{ fontSize:12, color:T.muted, marginBottom:4 }}>
+                            🏥 {clinics.length} location{clinics.length>1?"s":""} available
+                          </div>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                            <div style={{ fontSize:12, color:T.muted }}>⏳ {doc.exp} yrs exp</div>
+                            <div style={{ fontSize:13, fontWeight:700, color:T.primary }}>
                               {minFee > 0 ? `From PKR ${minFee.toLocaleString()}` : "See clinics"}
                             </div>
-                            <button onClick={() => startBooking(doc)}
-                              style={{ width:"100%", padding:"9px", background:T.primaryLight, color:T.primary,
-                                border:"none", borderRadius:8, fontWeight:600, fontSize:13, cursor:"pointer" }}>
-                              Book Now
-                            </button>
                           </div>
+                          <button onClick={() => startBooking(doc)}
+                            style={{ width:"100%", padding:"9px", background:T.primaryLight, color:T.primary,
+                              border:"none", borderRadius:8, fontWeight:600, fontSize:13, cursor:"pointer" }}>
+                            Book Now
+                          </button>
                         </div>
                       );
                     })}
@@ -310,7 +289,7 @@ export default function PatientPortal() {
                       return (
                         <Card key={doc.id} style={{ padding:"20px" }}>
                           <div style={{ display:"flex", gap:16, alignItems:"center", marginBottom:16, flexWrap:"wrap" }}>
-                            <DoctorPhoto doc={doc} size={72} />
+                            <Avatar initials={doc.avatar||"DR"} color={doc.color||T.primary} size={56} />
                             <div style={{ flex:1 }}>
                               <div style={{ fontWeight:800, fontSize:16, color:T.text }}>{doc.name}</div>
                               <div style={{ fontSize:14, color:T.primary, fontWeight:600 }}>{doc.specialty}</div>
@@ -324,6 +303,7 @@ export default function PatientPortal() {
                               Book Appointment
                             </button>
                           </div>
+
                           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:10 }}>
                             {clinics.map((clinic, i) => {
                               const fee = parseFee(clinic.fee);
@@ -344,7 +324,9 @@ export default function PatientPortal() {
                                     <div style={{ fontSize:11, color:T.muted, marginBottom:3 }}>📍 {clinic.address}</div>
                                   )}
                                   <div style={{ fontSize:11, color:T.muted, marginBottom:2 }}>
-                                    📅 {Array.isArray(clinic.days)?(clinic.days.length===7?"Every Day":clinic.days.join(", ")):clinic.days}
+                                    📅 {Array.isArray(clinic.days)
+                                      ? (clinic.days.length===7?"Every Day":clinic.days.join(", "))
+                                      : clinic.days}
                                   </div>
                                   {clinic.startTime && (
                                     <div style={{ fontSize:11, color:T.muted }}>
@@ -372,14 +354,12 @@ export default function PatientPortal() {
                   ← Back to Doctors
                 </button>
 
-                <Card style={{ marginBottom:20 }}>
-                  <div style={{ display:"flex", gap:16, alignItems:"center", flexWrap:"wrap" }}>
-                    <DoctorPhoto doc={selectedDoctor} size={70} />
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontWeight:800, fontSize:18, color:T.text }}>{selectedDoctor.name}</div>
-                      <div style={{ color:T.primary, fontWeight:600, fontSize:14 }}>{selectedDoctor.specialty}</div>
-                      <div style={{ color:T.muted, fontSize:13 }}>⏳ {selectedDoctor.exp} years experience</div>
-                    </div>
+                <Card style={{ marginBottom:20, display:"flex", gap:16, alignItems:"center", flexWrap:"wrap" }}>
+                  <Avatar initials={selectedDoctor.avatar||"DR"} color={selectedDoctor.color||T.primary} size={56} />
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:800, fontSize:18, color:T.text }}>{selectedDoctor.name}</div>
+                    <div style={{ color:T.primary, fontWeight:600, fontSize:14 }}>{selectedDoctor.specialty}</div>
+                    <div style={{ color:T.muted, fontSize:13 }}>⏳ {selectedDoctor.exp} years experience</div>
                   </div>
                 </Card>
 
@@ -397,12 +377,13 @@ export default function PatientPortal() {
                         <div style={{ fontSize:11, fontWeight:600,
                           color:bookStep===i+1?T.primary:T.muted, whiteSpace:"nowrap" }}>{s}</div>
                       </div>
-                      {i<2 && <div style={{ height:2, flex:1, background:bookStep>i+1?T.accent:T.border, marginBottom:20 }} />}
+                      {i<2 && <div style={{ height:2, flex:1,
+                        background:bookStep>i+1?T.accent:T.border, marginBottom:20 }} />}
                     </div>
                   ))}
                 </div>
 
-                {/* STEP 1 */}
+                {/* STEP 1 — Select Clinic */}
                 {bookStep === 1 && (
                   <Card>
                     <h3 style={{ margin:"0 0 16px", color:T.text, fontSize:16, fontWeight:700 }}>
@@ -424,13 +405,17 @@ export default function PatientPortal() {
                                   {clinic.isOnline?"💻":"🏥"} {clinic.name}
                                 </div>
                                 {!clinic.isOnline && clinic.address && (
-                                  <div style={{ fontSize:12, color:T.muted, marginBottom:6 }}>📍 {clinic.address}</div>
+                                  <div style={{ fontSize:12, color:T.muted, marginBottom:6 }}>
+                                    📍 {clinic.address}
+                                  </div>
                                 )}
                                 <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:4 }}>
                                   <span style={{ fontSize:12, fontWeight:600, padding:"3px 10px", borderRadius:20,
                                     background:clinic.isOnline?"#dcfce7":"#e0f2fe",
                                     color:clinic.isOnline?"#16a34a":"#0369a1" }}>
-                                    📅 {Array.isArray(clinic.days)?(clinic.days.length===7?"Every Day":clinic.days.join(", ")):clinic.days}
+                                    📅 {Array.isArray(clinic.days)
+                                      ? (clinic.days.length===7?"Every Day":clinic.days.join(", "))
+                                      : clinic.days}
                                   </span>
                                   {clinic.startTime && (
                                     <span style={{ fontSize:12, fontWeight:600, padding:"3px 10px",
@@ -441,13 +426,15 @@ export default function PatientPortal() {
                                 </div>
                               </div>
                               <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:8, marginLeft:12 }}>
-                                <div style={{ fontSize:17, fontWeight:800, color:clinic.isOnline?"#16a34a":T.primary }}>
+                                <div style={{ fontSize:17, fontWeight:800,
+                                  color:clinic.isOnline?"#16a34a":T.primary }}>
                                   PKR {fee > 0 ? fee.toLocaleString() : "—"}
                                 </div>
                                 <div style={{ width:22, height:22, borderRadius:"50%",
                                   border:`2px solid ${isSelected?(clinic.isOnline?"#16a34a":T.primary):T.border}`,
                                   background:isSelected?(clinic.isOnline?"#16a34a":T.primary):"white",
-                                  display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:12 }}>
+                                  display:"flex", alignItems:"center", justifyContent:"center",
+                                  color:"white", fontSize:12 }}>
                                   {isSelected?"✓":""}
                                 </div>
                               </div>
@@ -456,7 +443,8 @@ export default function PatientPortal() {
                         );
                       })}
                     </div>
-                    <button onClick={() => selectedClinic && setBookStep(2)} disabled={!selectedClinic}
+                    <button onClick={() => selectedClinic && setBookStep(2)}
+                      disabled={!selectedClinic}
                       style={{ marginTop:20, width:"100%", padding:"13px",
                         background:selectedClinic?`linear-gradient(135deg,${T.primary},${T.primaryDark})`:T.border,
                         color:"#fff", border:"none", borderRadius:10, fontWeight:700,
@@ -466,7 +454,7 @@ export default function PatientPortal() {
                   </Card>
                 )}
 
-                {/* STEP 2 */}
+                {/* STEP 2 — Date & Time */}
                 {bookStep === 2 && selectedClinic && (
                   <Card>
                     <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20,
@@ -476,7 +464,9 @@ export default function PatientPortal() {
                       <span style={{ fontSize:20 }}>{selectedClinic.isOnline?"💻":"🏥"}</span>
                       <div style={{ flex:1 }}>
                         <div style={{ fontWeight:700, fontSize:13, color:T.text }}>{selectedClinic.name}</div>
-                        {!selectedClinic.isOnline && <div style={{ fontSize:11, color:T.muted }}>{selectedClinic.address}</div>}
+                        {!selectedClinic.isOnline && (
+                          <div style={{ fontSize:11, color:T.muted }}>{selectedClinic.address}</div>
+                        )}
                         <div style={{ fontSize:12, color:selectedClinic.isOnline?"#16a34a":T.primary, fontWeight:700 }}>
                           PKR {parseFee(selectedClinic.fee).toLocaleString()}
                         </div>
@@ -491,7 +481,9 @@ export default function PatientPortal() {
                     <label style={labelStyle}>Select Date</label>
                     <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
                       {getAvailableDates(selectedClinic).length === 0 ? (
-                        <div style={{ color:T.muted, fontSize:13, padding:"12px 0" }}>No available dates for this clinic.</div>
+                        <div style={{ color:T.muted, fontSize:13, padding:"12px 0" }}>
+                          No available dates for this clinic.
+                        </div>
                       ) : (
                         getAvailableDates(selectedClinic).map(d => {
                           const dateObj = new Date(d+"T00:00:00");
@@ -504,7 +496,9 @@ export default function PatientPortal() {
                                 fontWeight:600, fontSize:12, textAlign:"center" }}>
                               <div>{DAYS[dateObj.getDay()]}</div>
                               <div style={{ fontSize:14, fontWeight:800 }}>{dateObj.getDate()}</div>
-                              <div style={{ fontSize:10, color:T.muted }}>{dateObj.toLocaleString("default",{month:"short"})}</div>
+                              <div style={{ fontSize:10, color:T.muted }}>
+                                {dateObj.toLocaleString("default",{month:"short"})}
+                              </div>
                             </button>
                           );
                         })
@@ -518,12 +512,14 @@ export default function PatientPortal() {
                           {(Array.isArray(selectedClinic.slots)?selectedClinic.slots:[]).map(slot => {
                             const booked = bookedSlots.includes(slot);
                             return (
-                              <button key={slot} onClick={() => !booked && setForm(f=>({...f,slot}))} disabled={booked}
+                              <button key={slot} onClick={() => !booked && setForm(f=>({...f,slot}))}
+                                disabled={booked}
                                 style={{ padding:"10px", borderRadius:10,
                                   border:`2px solid ${form.slot===slot?T.primary:booked?"#eee":T.border}`,
                                   background:form.slot===slot?T.primaryLight:booked?"#f9f9f9":T.white,
                                   color:form.slot===slot?T.primary:booked?"#ccc":T.text,
-                                  fontWeight:600, fontSize:13, cursor:booked?"not-allowed":"pointer",
+                                  fontWeight:600, fontSize:13,
+                                  cursor:booked?"not-allowed":"pointer",
                                   textDecoration:booked?"line-through":"none" }}>
                                 {formatTime(slot)} {booked?"🚫":""}
                               </button>
@@ -531,7 +527,8 @@ export default function PatientPortal() {
                           })}
                         </div>
                         <label style={labelStyle}>Reason for Visit</label>
-                        <textarea value={form.reason} onChange={e => setForm(f=>({...f,reason:e.target.value}))}
+                        <textarea value={form.reason}
+                          onChange={e => setForm(f=>({...f,reason:e.target.value}))}
                           placeholder="Describe your symptoms or reason..."
                           style={{ ...inputStyle, height:80, resize:"vertical" }} />
                       </div>
@@ -539,11 +536,16 @@ export default function PatientPortal() {
 
                     <div style={{ display:"flex", gap:10, marginTop:16 }}>
                       <button onClick={() => setBookStep(1)}
-                        style={{ flex:1, padding:"13px", background:T.white, border:`2px solid ${T.border}`,
-                          borderRadius:10, fontWeight:700, fontSize:14, cursor:"pointer", color:T.muted }}>← Back</button>
-                      <button onClick={() => form.date && form.slot && setBookStep(3)} disabled={!form.date||!form.slot}
+                        style={{ flex:1, padding:"13px", background:T.white,
+                          border:`2px solid ${T.border}`, borderRadius:10,
+                          fontWeight:700, fontSize:14, cursor:"pointer", color:T.muted }}>
+                        ← Back
+                      </button>
+                      <button onClick={() => form.date && form.slot && setBookStep(3)}
+                        disabled={!form.date||!form.slot}
                         style={{ flex:2, padding:"13px",
-                          background:form.date&&form.slot?`linear-gradient(135deg,${T.primary},${T.primaryDark})`:T.border,
+                          background:form.date&&form.slot
+                            ?`linear-gradient(135deg,${T.primary},${T.primaryDark})`:T.border,
                           color:"#fff", border:"none", borderRadius:10, fontWeight:700,
                           fontSize:14, cursor:form.date&&form.slot?"pointer":"not-allowed" }}>
                         Review Booking →
@@ -552,10 +554,12 @@ export default function PatientPortal() {
                   </Card>
                 )}
 
-                {/* STEP 3 */}
+                {/* STEP 3 — Confirm */}
                 {bookStep === 3 && selectedClinic && (
                   <Card>
-                    <h3 style={{ margin:"0 0 18px", color:T.text, fontSize:16, fontWeight:700 }}>Confirm Appointment</h3>
+                    <h3 style={{ margin:"0 0 18px", color:T.text, fontSize:16, fontWeight:700 }}>
+                      Confirm Appointment
+                    </h3>
                     <div style={{ background:T.bg, borderRadius:12, padding:16, marginBottom:16 }}>
                       {[
                         ["Doctor",    selectedDoctor.name],
@@ -563,7 +567,8 @@ export default function PatientPortal() {
                         ["Patient",   profile?.name || user.displayName || "—"],
                         ["Clinic",    selectedClinic.name],
                         ["Address",   selectedClinic.isOnline?"Online (Video Call)":selectedClinic.address],
-                        ["Date",      new Date(form.date+"T00:00:00").toLocaleDateString("en-PK",{weekday:"long",year:"numeric",month:"long",day:"numeric"})],
+                        ["Date",      new Date(form.date+"T00:00:00").toLocaleDateString("en-PK",
+                          {weekday:"long",year:"numeric",month:"long",day:"numeric"})],
                         ["Time",      formatTime(form.slot)],
                         ["Type",      selectedClinic.isOnline?"💻 Online":"🏥 In Person"],
                         ["Reason",    form.reason||"—"],
@@ -575,21 +580,28 @@ export default function PatientPortal() {
                         </div>
                       ))}
                     </div>
+
                     <div style={{ padding:"14px 16px", borderRadius:10, marginBottom:16,
                       background:selectedClinic.isOnline?"#f0fdf4":T.primaryLight,
                       border:`1.5px solid ${selectedClinic.isOnline?"#86efac":T.primary}`,
                       display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                       <span style={{ fontWeight:600, color:T.text }}>Consultation Fee</span>
-                      <span style={{ fontWeight:900, fontSize:20, color:selectedClinic.isOnline?"#16a34a":T.primary }}>
+                      <span style={{ fontWeight:900, fontSize:20,
+                        color:selectedClinic.isOnline?"#16a34a":T.primary }}>
                         PKR {parseFee(selectedClinic.fee).toLocaleString()}
                       </span>
                     </div>
+
                     <div style={{ display:"flex", gap:10 }}>
                       <button onClick={() => setBookStep(2)}
-                        style={{ flex:1, padding:"13px", background:T.white, border:`2px solid ${T.border}`,
-                          borderRadius:10, fontWeight:700, fontSize:14, cursor:"pointer", color:T.muted }}>← Back</button>
+                        style={{ flex:1, padding:"13px", background:T.white,
+                          border:`2px solid ${T.border}`, borderRadius:10,
+                          fontWeight:700, fontSize:14, cursor:"pointer", color:T.muted }}>
+                        ← Back
+                      </button>
                       <button onClick={handleBook} disabled={submitting}
-                        style={{ flex:2, padding:"13px", background:`linear-gradient(135deg,${T.accent},#00a87e)`,
+                        style={{ flex:2, padding:"13px",
+                          background:`linear-gradient(135deg,${T.accent},#00a87e)`,
                           color:"#fff", border:"none", borderRadius:10, fontWeight:700,
                           fontSize:14, cursor:submitting?"not-allowed":"pointer", opacity:submitting?0.7:1 }}>
                         {submitting?"Booking...":"✅ Confirm Booking"}
@@ -611,7 +623,9 @@ export default function PatientPortal() {
                     <div style={{ color:T.muted, fontSize:14, marginBottom:20 }}>Book your first consultation</div>
                     <button onClick={() => setView("browse")}
                       style={{ padding:"11px 24px", background:T.primary, color:"#fff",
-                        border:"none", borderRadius:10, fontWeight:700, cursor:"pointer" }}>Find a Doctor</button>
+                        border:"none", borderRadius:10, fontWeight:700, cursor:"pointer" }}>
+                      Find a Doctor
+                    </button>
                   </Card>
                 ) : (
                   <div style={{ display:"grid", gap:12 }}>
@@ -620,19 +634,13 @@ export default function PatientPortal() {
                       return (
                         <Card key={a.id} style={{ padding:"16px 20px" }}>
                           <div style={{ display:"flex", gap:14, alignItems:"flex-start", flexWrap:"wrap" }}>
-                            {/* Doctor photo in appointment card */}
-                            {a.doctorPhoto ? (
-                              <img src={a.doctorPhoto} alt={a.doctorName}
-                                style={{ width:50, height:50, borderRadius:"50%", objectFit:"cover",
-                                  flexShrink:0, border:`2px solid ${T.border}` }}
-                                onError={e => { e.target.style.display="none"; }} />
-                            ) : (
-                              <div style={{ width:50, height:50, borderRadius:"50%", background:T.primaryLight,
-                                border:`2px solid ${T.primary}`, display:"flex", alignItems:"center",
-                                justifyContent:"center", fontSize:20, flexShrink:0 }}>
-                                {isOnline?"💻":"🏥"}
-                              </div>
-                            )}
+                            <div style={{ width:46, height:46, borderRadius:"50%",
+                              background:isOnline?"#f0fdf4":T.primaryLight,
+                              border:`2px solid ${isOnline?"#86efac":T.primary}`,
+                              display:"flex", alignItems:"center", justifyContent:"center",
+                              fontSize:20, flexShrink:0 }}>
+                              {isOnline?"💻":"🏥"}
+                            </div>
                             <div style={{ flex:1, minWidth:180 }}>
                               <div style={{ display:"flex", justifyContent:"space-between",
                                 alignItems:"flex-start", flexWrap:"wrap", gap:8 }}>
@@ -652,21 +660,26 @@ export default function PatientPortal() {
                               )}
                               <div style={{ display:"flex", gap:14, marginTop:6, flexWrap:"wrap" }}>
                                 <span style={{ fontSize:12, color:T.muted }}>
-                                  📅 {a.date && new Date(a.date+"T00:00:00").toLocaleDateString("en-PK",{weekday:"short",month:"short",day:"numeric"})}
+                                  📅 {a.date && new Date(a.date+"T00:00:00").toLocaleDateString("en-PK",
+                                    {weekday:"short",month:"short",day:"numeric"})}
                                 </span>
                                 <span style={{ fontSize:12, color:T.muted }}>🕐 {formatTime(a.slot)}</span>
                                 {a.clinicFee > 0 && (
-                                  <span style={{ fontSize:12, fontWeight:700, color:isOnline?"#16a34a":T.primary }}>
+                                  <span style={{ fontSize:12, fontWeight:700,
+                                    color:isOnline?"#16a34a":T.primary }}>
                                     PKR {Number(a.clinicFee).toLocaleString()}
                                   </span>
                                 )}
                               </div>
-                              {a.reason && <div style={{ fontSize:12, color:T.muted, marginTop:4 }}>📝 {a.reason}</div>}
+                              {a.reason && (
+                                <div style={{ fontSize:12, color:T.muted, marginTop:4 }}>📝 {a.reason}</div>
+                              )}
                             </div>
                             {(a.status==="confirmed"||a.status==="pending") && (
                               <button onClick={() => handleCancel(a.id)}
                                 style={{ padding:"7px 14px", background:"#fef2f2", color:"#EF4444",
-                                  border:"1.5px solid #EF4444", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                                  border:"1.5px solid #EF4444", borderRadius:8, fontSize:12,
+                                  fontWeight:600, cursor:"pointer" }}>
                                 Cancel
                               </button>
                             )}
