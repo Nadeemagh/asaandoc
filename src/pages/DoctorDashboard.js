@@ -531,7 +531,7 @@ export default function DoctorDashboard() {
       const myDoc = allDoctors.find(d =>
         d.id === profile?.doctorId ||
         d.name?.toLowerCase() === profile?.name?.toLowerCase()
-      ) || allDoctors[0];
+     ) || null;
       setDoctor(myDoc);
       if (myDoc) {
         const appts = await getAppointmentsByDoctor(myDoc.id);
