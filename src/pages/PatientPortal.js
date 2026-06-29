@@ -120,7 +120,7 @@ export default function PatientPortal() {
     if (!clinic) return [];
     const dates = [];
     const holidays = selectedDoctor?.holidays?.map(h => h.date) || [];
-    for (let i = 1; i <= 60; i++) {
+    for (let i = 1; i <= 30; i++) {
       const d = addDays(today, i);
       const df = fmtDate(d);
       if (clinic.days?.includes(DAYS[d.getDay()]) && !holidays.includes(df)) {
