@@ -507,7 +507,7 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
 }
 
 export default function DoctorDashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const [view, setView]                 = useState("dashboard");
   const [doctor, setDoctor]             = useState(null);
   const [appointments, setAppointments] = useState([]);
@@ -530,8 +530,9 @@ export default function DoctorDashboard() {
       const allDoctors = await getDoctors();
       const myDoc = allDoctors.find(d =>
         d.id === profile?.doctorId ||
+        d.email === user?.email ||
         d.name?.toLowerCase() === profile?.name?.toLowerCase()
-     ) || null;
+      ) || null;
       setDoctor(myDoc);
       if (myDoc) {
         const appts = await getAppointmentsByDoctor(myDoc.id);
@@ -584,6 +585,30 @@ export default function DoctorDashboard() {
   if (loadingData) return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:T.bg, fontFamily:"Inter,system-ui,sans-serif" }}>
       <div style={{ textAlign:"center" }}><Spinner /><div style={{ color:T.muted, fontSize:14, marginTop:12 }}>Loading...</div></div>
+    </div>
+  );
+
+  // New doctor - no profile linked yet
+  if (!doctor) return (
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:T.bg, fontFamily:"Inter,system-ui,sans-serif" }}>
+      <div style={{ textAlign:"center", maxWidth:400, padding:40 }}>
+        <div style={{ fontSize:64, marginBottom:16 }}>👨‍⚕️</div>
+        <h2 style={{ fontSize:22, fontWeight:800, color:T.text, marginBottom:12 }}>Welcome, {profile?.name}!</h2>
+        <p style={{ color:T.muted, fontSize:14, marginBottom:8 }}>Your doctor profile is being set up.</p>
+        <p style={{ color:T.muted, fontSize:14, marginBottom:24 }}>Please contact the admin to complete your profile setup, or refresh the page in a moment.</p>
+        <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
+          <button onClick={loadData}
+            style={{ padding:"12px 24px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
+              color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:14, cursor:"pointer" }}>
+            🔄 Refresh
+          </button>
+          <button onClick={logoutUser}
+            style={{ padding:"12px 24px", background:"#fff", color:T.primary,
+              border:`2px solid ${T.primary}`, borderRadius:10, fontWeight:700, fontSize:14, cursor:"pointer" }}>
+            Sign Out
+          </button>
+        </div>
+      </div>
     </div>
   );
 
