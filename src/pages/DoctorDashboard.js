@@ -128,6 +128,8 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
   const [exp, setExp] = useState(doctor?.exp || "");
   const [services, setServices] = useState(doctor?.services || "");
   const [qualifications, setQualifications] = useState(doctor?.qualifications || "");
+  const [photo, setPhoto] = useState(doctor?.photo || "");
+  const [photoPreview, setPhotoPreview] = useState(doctor?.photo || "");
 
   useEffect(() => {
     if (doctor?.clinics) setClinics(JSON.parse(JSON.stringify(doctor.clinics)));
@@ -169,7 +171,7 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
   const saveProfile = async () => {
     setSaving(true);
     try {
-      await updateDoctorProfile(doctor.id, { exp, services, qualifications });
+      await updateDoctorProfile(doctor.id, { exp, services, qualifications, photo });
       await onUpdate();
       showToast("Profile saved! ✅");
       setTimeout(() => window.location.reload(), 1500);
@@ -372,6 +374,31 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
       {activeTab === "profile" && (
         <Card style={{marginBottom:20}}>
           <h3 style={{margin:"0 0 20px",fontSize:15,fontWeight:700,color:T.text}}>👨 Profile & Services</h3>
+
+          {/* Photo Upload */}
+          <div style={{marginBottom:24,padding:16,background:T.bg,borderRadius:12,border:`1.5px solid ${T.border}`}}>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:12}}>Profile Photo</label>
+            <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+              {photoPreview
+                ?<img src={photoPreview} alt="Profile" style={{width:80,height:80,borderRadius:"50%",objectFit:"cover",border:`3px solid ${T.primary}`}}/>
+                :<div style={{width:80,height:80,borderRadius:"50%",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:28}}>{doctor?.avatar||"DR"}</div>}
+              <div>
+                <label htmlFor="photoUpload" style={{display:"inline-block",padding:"10px 20px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,color:"#fff",borderRadius:9,fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:8}}>
+                  📷 Upload Photo
+                </label>
+                <input id="photoUpload" type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  if (file.size > 500000) { alert("Photo must be under 500KB!"); return; }
+                  const reader = new FileReader();
+                  reader.onload = (ev) => { setPhoto(ev.target.result); setPhotoPreview(ev.target.result); };
+                  reader.readAsDataURL(file);
+                }}/>
+                <div style={{fontSize:11,color:T.muted}}>Max 500KB · JPG or PNG</div>
+                {photoPreview && <button onClick={()=>{setPhoto("");setPhotoPreview("");}} style={{marginTop:6,padding:"4px 10px",background:"#fef2f2",color:"#EF4444",border:"1px solid #EF4444",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>Remove Photo</button>}
+              </div>
+            </div>
+          </div>
           <div style={{marginBottom:20}}>
             <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Years of Experience</label>
             <input type="number" value={exp} onChange={e=>setExp(e.target.value)} placeholder="e.g. 25"
