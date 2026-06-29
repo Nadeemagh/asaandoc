@@ -205,14 +205,16 @@ export const removeHoliday = async (doctorId, date) => {
   }
 };
 
-export const updateDoctorProfile = async (doctorId, { exp, services, qualifications }) => {
+export const updateDoctorProfile = async (doctorId, { exp, services, qualifications, photo }) => {
   try {
-    await updateDoc(doc(db, "doctors", doctorId), {
+    const updateData = {
       exp: Number(exp) || 0,
       services: services || "",
       qualifications: qualifications || "",
       updatedAt: serverTimestamp(),
-    });
+    };
+    if (photo !== undefined) updateData.photo = photo;
+    await updateDoc(doc(db, "doctors", doctorId), updateData);
   } catch (e) {
     console.error("updateDoctorProfile error:", e);
     throw e;
