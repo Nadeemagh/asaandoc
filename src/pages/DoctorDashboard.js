@@ -915,4 +915,121 @@ export default function DoctorDashboard() {
                             <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`}}><Badge status={a.status}/></td>
                           </tr>
                         ))}</tbody>
-                        <tfoot><tr style={{background:T
+                        <tfoot><tr style={{background:T.primaryLight}}>
+                          <td colSpan={6} style={{padding:"12px",fontWeight:700,color:T.text}}>Total</td>
+                          <td style={{padding:"12px",fontWeight:800,color:T.primary}}>PKR {reportAppts.reduce((s,a)=>s+Number(a.clinicFee||0),0).toLocaleString()}</td>
+                          <td></td>
+                        </tr></tfoot>
+                      </table>
+                    </div>
+                  </Card>
+                </>
+              )}
+              {reportAppts.length===0&&<Card style={{textAlign:"center",padding:"48px 20px"}}>
+                <div style={{fontSize:48,marginBottom:12}}>📋</div>
+                <div style={{fontWeight:700,color:T.text,marginBottom:8}}>No appointments on this date</div>
+              </Card>}
+            </div>
+          )}
+
+          {/* MANAGE SCHEDULE */}
+          {view==="manage"&&<ManageSchedule doctor={doctor} onUpdate={loadData} showToast={showToast}/>}
+
+          {/* ANALYTICS */}
+          {view==="stats"&&(
+            <div>
+              <h2 style={{margin:"0 0 18px",fontSize:18,fontWeight:800,color:T.text}}>Analytics Overview</h2>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,marginBottom:24}}>
+                <StatCard label="Total"     value={appointments.length} icon="📋" color={T.primary}/>
+                <StatCard label="Confirmed" value={appointments.filter(a=>a.status==="confirmed").length} icon="✅" color={T.accent}/>
+                <StatCard label="Completed" value={completed.length} icon="🎯" color="#8B5CF6"/>
+                <StatCard label="Revenue"   value={`PKR ${completed.reduce((s,a)=>s+Number(a.clinicFee||0),0).toLocaleString()}`} icon="💰" color="#16a34a"/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+                <Card>
+                  <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:T.text}}>Status Breakdown</h3>
+                  {[["confirmed",T.accent,"Confirmed"],["pending","#F59E0B","Pending"],["completed","#8B5CF6","Completed"],["cancelled","#EF4444","Cancelled"]].map(([st,col,lbl])=>{
+                    const cnt=appointments.filter(a=>a.status===st).length;
+                    const pct=appointments.length?Math.round(cnt/appointments.length*100):0;
+                    return <div key={st} style={{marginBottom:12}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                        <span style={{fontSize:13,fontWeight:600,color:T.text}}>{lbl}</span>
+                        <span style={{fontSize:13,fontWeight:700,color:col}}>{cnt} ({pct}%)</span>
+                      </div>
+                      <div style={{height:8,background:T.bg,borderRadius:10,overflow:"hidden"}}>
+                        <div style={{height:"100%",borderRadius:10,background:col,width:`${pct}%`}}/>
+                      </div>
+                    </div>;
+                  })}
+                </Card>
+                <Card>
+                  <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:T.text}}>Revenue by Clinic</h3>
+                  {doctor?.clinics?.map((c,i)=>{
+                    const rev=completed.filter(a=>a.clinicName===c.name).reduce((s,a)=>s+Number(a.clinicFee||0),0);
+                    const total=completed.reduce((s,a)=>s+Number(a.clinicFee||0),0);
+                    const pct=total>0?Math.round(rev/total*100):0;
+                    return <div key={i} style={{marginBottom:12}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                        <span style={{fontSize:12,fontWeight:600,color:T.text}}>{c.isOnline?"💻":"🏥"} {c.name?.split(" ").slice(0,2).join(" ")}</span>
+                        <span style={{fontSize:12,fontWeight:700,color:T.primary}}>PKR {rev.toLocaleString()}</span>
+                      </div>
+                      <div style={{height:6,background:T.bg,borderRadius:10,overflow:"hidden"}}>
+                        <div style={{height:"100%",borderRadius:10,background:T.primary,width:`${pct}%`}}/>
+                      </div>
+                    </div>;
+                  })}
+                </Card>
+              </div>
+              {doctor&&<Card>
+                <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:T.text}}>My Profile</h3>
+                <div style={{display:"flex",gap:16,alignItems:"flex-start",flexWrap:"wrap"}}>
+                  {doctor.photo
+                    ?<img src={doctor.photo} alt={doctor.name} style={{width:70,height:70,borderRadius:"50%",objectFit:"cover",border:`3px solid ${T.primary}`,flexShrink:0}} onError={e=>{e.target.style.display="none";}}/>
+                    :<div style={{width:70,height:70,borderRadius:"50%",background:doctor.color||T.primary,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:24,flexShrink:0}}>{doctor.avatar||"DR"}</div>}
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:800,fontSize:17,color:T.text}}>{profile?.name||doctor.name}</div>
+                    <div style={{fontSize:14,color:T.primary,fontWeight:600}}>{doctor.specialty}</div>
+                    <div style={{fontSize:13,color:T.muted,marginTop:4}}>⏳ {doctor.exp} years experience</div>
+                    {doctor.clinics&&Array.isArray(doctor.clinics)&&<div style={{marginTop:10}}>
+                      <div style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:6}}>🏥 Clinics:</div>
+                      {doctor.clinics.map((c,i)=>(
+                        <div key={i} style={{padding:"8px 12px",background:T.bg,borderRadius:8,marginBottom:6,borderLeft:`3px solid ${c.isOnline?"#16a34a":T.primary}`}}>
+                          <div style={{display:"flex",justifyContent:"space-between"}}>
+                            <div style={{fontWeight:600,fontSize:12,color:T.text}}>{c.isOnline?"💻":"🏥"} {c.name}</div>
+                            <div style={{fontSize:12,fontWeight:700,color:T.primary}}>PKR {Number(c.fee).toLocaleString()}</div>
+                          </div>
+                          {!c.isOnline&&<div style={{fontSize:11,color:T.muted}}>📍 {c.address}</div>}
+                          <div style={{fontSize:11,color:T.muted}}>📅 {Array.isArray(c.days)?(c.days.length===7?"Every Day":c.days.join(", ")):c.days}{c.startTime&&` · 🕐 ${formatTime(c.startTime)} – ${formatTime(c.endTime)}`}</div>
+                        </div>
+                      ))}
+                    </div>}
+                  </div>
+                </div>
+              </Card>}
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {toast&&<Toast msg={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
+
+      {receiptModal&&(
+        <div onClick={()=>setReceiptModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:16,padding:24,maxWidth:640,width:"100%",maxHeight:"88vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.4)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div style={{fontWeight:700,fontSize:16,color:T.text}}>💳 Payment Receipt</div>
+              <button onClick={()=>setReceiptModal(null)} style={{background:"none",border:"none",fontSize:26,cursor:"pointer",color:T.muted}}>×</button>
+            </div>
+            {receiptModal.startsWith("data:image")
+              ?<img src={receiptModal} alt="Receipt" style={{width:"100%",borderRadius:8,border:`1px solid ${T.border}`}}/>
+              :receiptModal.startsWith("data:application/pdf")
+              ?<iframe src={receiptModal} style={{width:"100%",height:520,border:"none",borderRadius:8}} title="Receipt"/>
+              :<div style={{textAlign:"center",padding:40,color:T.muted}}>Cannot preview.</div>}
+            <button onClick={()=>setReceiptModal(null)} style={{marginTop:16,width:"100%",padding:"11px",background:T.primary,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>Close</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
