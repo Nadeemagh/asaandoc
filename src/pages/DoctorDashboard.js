@@ -273,6 +273,24 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
 
       {activeTab === "clinics" && (
         <div>
+          {/* New Doctor Setup Banner */}
+          {clinics.length === 0 && (
+            <div style={{ padding:"28px", textAlign:"center", background:"#f0f9ff",
+              border:"2px dashed #218EB6", borderRadius:14, marginBottom:20 }}>
+              <div style={{ fontSize:48, marginBottom:12 }}>🏥</div>
+              <h3 style={{ fontSize:16, fontWeight:700, color:T.text, marginBottom:8 }}>No Clinics Added Yet</h3>
+              <p style={{ color:T.muted, fontSize:13, marginBottom:20 }}>Add your clinic locations where patients can book appointments.</p>
+              <button onClick={() => {
+                const newClinic = { name:"", address:"", fee:0, days:[], slots:[], startTime:"09:00", endTime:"17:00", isOnline:false };
+                setClinics([...clinics, newClinic]);
+              }}
+                style={{ padding:"12px 24px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
+                  color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:14, cursor:"pointer" }}>
+                + Add First Clinic
+              </button>
+            </div>
+          )}
+
           <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap" }}>
             {clinics.map((c,i) => (
               <button key={i} onClick={() => setActiveClinic(i)}
@@ -280,9 +298,20 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                   border:`2px solid ${activeClinic===i?T.primary:T.border}`,
                   background:activeClinic===i?T.primaryLight:T.white,
                   color:activeClinic===i?T.primary:T.muted }}>
-                {c.isOnline?"💻":"🏥"} {c.name?.split(" ").slice(0,2).join(" ")}
+                {c.isOnline?"💻":"🏥"} {c.name?.split(" ").slice(0,2).join(" ")||`Clinic ${i+1}`}
               </button>
             ))}
+            {clinics.length > 0 && (
+              <button onClick={() => {
+                const newClinic = { name:"", address:"", fee:0, days:[], slots:[], startTime:"09:00", endTime:"17:00", isOnline:false };
+                setClinics([...clinics, newClinic]);
+                setActiveClinic(clinics.length);
+              }}
+                style={{ padding:"8px 16px", borderRadius:10, fontWeight:600, fontSize:13, cursor:"pointer",
+                  border:`2px dashed ${T.border}`, background:T.white, color:T.muted }}>
+                + Add Clinic
+              </button>
+            )}
           </div>
           {clinics[activeClinic] && (
             <Card style={{ marginBottom:20 }}>
@@ -290,44 +319,39 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                 {clinics[activeClinic].isOnline?"💻":"🏥"} {clinics[activeClinic].name}
               </h3>
 
-              {/* Online Toggle — only show for online clinic */}
-              {clinics[activeClinic].name?.toLowerCase().includes("online") && (
-              <div style={{ marginBottom:16, padding:"12px 14px", borderRadius:10,
-                background:clinics[activeClinic].isOnline?"#f0fdf4":"#fef2f2",
-                border:`1.5px solid ${clinics[activeClinic].isOnline?"#86efac":"#fca5a5"}`,
-                display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              {/* Clinic Name */}
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Clinic Name</label>
+                <input value={clinics[activeClinic].name||""} onChange={e=>{
+                  const u=JSON.parse(JSON.stringify(clinics));
+                  u[activeClinic].name=e.target.value;
+                  setClinics(u);
+                }}
+                  placeholder="e.g. City Medical Center"
+                  style={{ padding:"10px 14px", borderRadius:9, border:`1.5px solid ${T.border}`, fontSize:14, color:T.text, width:"100%", outline:"none", fontFamily:"inherit" }} />
+              </div>
+
+              {/* Online Toggle */}
+              <div style={{ marginBottom:16, padding:"12px 14px", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"space-between",
+                background:clinics[activeClinic].isOnline?"#f0fdf4":"#f8fafc",
+                border:`1.5px solid ${clinics[activeClinic].isOnline?"#86efac":T.border}` }}>
                 <div>
-                  <div style={{ fontWeight:700, fontSize:13, color:T.text }}>
-                    {clinics[activeClinic].isOnline ? "💻 Online Consultation — Active" : "💻 Online Consultation — Disabled"}
-                  </div>
-                  <div style={{ fontSize:11, color:T.muted, marginTop:2 }}>
-                    {clinics[activeClinic].isOnline ? "Patients can book online sessions" : "Patients cannot book online sessions"}
-                  </div>
+                  <div style={{ fontWeight:700, fontSize:13, color:T.text }}>💻 Online Consultation</div>
+                  <div style={{ fontSize:11, color:T.muted }}>Toggle if this is an online clinic</div>
                 </div>
-                <button onClick={async () => {
-                    const u = JSON.parse(JSON.stringify(clinics));
-                    u[activeClinic].isOnline = !u[activeClinic].isOnline;
-                    setClinics(u);
-                    setSaving(true);
-                    try {
-                      await updateDoctorSchedule(doctor.id, u);
-                      await onUpdate();
-                      showToast(u[activeClinic].isOnline ? "Online Consultation enabled! ✅" : "Online Consultation disabled! ✅");
-                    } catch {
-                      showToast("Failed to save.", "error");
-                    }
-                    setSaving(false);
-                  }}
-                  style={{ padding:"8px 18px", borderRadius:20, fontWeight:700, fontSize:13, cursor:"pointer",
-                    border:"none",
-                    background:clinics[activeClinic].isOnline?"#EF4444":"#16a34a",
-                    color:"#fff" }}>
-                  {clinics[activeClinic].isOnline ? "Disable" : "Enable"}
+                <button onClick={()=>{
+                  const u=JSON.parse(JSON.stringify(clinics));
+                  u[activeClinic].isOnline=!u[activeClinic].isOnline;
+                  setClinics(u);
+                }}
+                  style={{ padding:"7px 16px", borderRadius:20, fontWeight:700, fontSize:12, cursor:"pointer", border:"none",
+                    background:clinics[activeClinic].isOnline?"#EF4444":"#16a34a", color:"#fff" }}>
+                  {clinics[activeClinic].isOnline?"Disable":"Enable"}
                 </button>
               </div>
-              )}
+
               {/* Address - hide for online clinic */}
-              {!clinics[activeClinic].name?.toLowerCase().includes("online") && (
+              {!clinics[activeClinic].isOnline && (
                 <div style={{ marginBottom:16 }}>
                   <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Clinic Address</label>
                   <input value={clinics[activeClinic].address||""} onChange={e=>updateAddress(activeClinic,e.target.value)}
@@ -336,7 +360,7 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
               )}
 
               {/* Hide fee/schedule when online clinic is disabled */}
-              {(!clinics[activeClinic].name?.toLowerCase().includes("online") || clinics[activeClinic].isOnline === true) && (<>
+              {(!clinics[activeClinic].isOnline || clinics[activeClinic].isOnline === true) && (<>
                 <div style={{ marginBottom:16 }}>
                   <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted, textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>Consultation Fee (PKR)</label>
                   <input type="number" value={clinics[activeClinic].fee||""} onChange={e=>updateFee(activeClinic,e.target.value)}
@@ -508,7 +532,14 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
 
 export default function DoctorDashboard() {
   const { profile, user } = useAuth();
-  const [view, setView]                 = useState("dashboard");
+  const [view, setView] = useState("dashboard");
+
+  // Auto-switch new doctors to manage schedule
+  useEffect(() => {
+    if (doctor && (!doctor.clinics || doctor.clinics.length === 0)) {
+      setView("manage");
+    }
+  }, [doctor]);
   const [doctor, setDoctor]             = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [loadingData, setLoadingData]   = useState(true);
@@ -594,23 +625,18 @@ export default function DoctorDashboard() {
       <div style={{ textAlign:"center", maxWidth:400, padding:40 }}>
         <div style={{ fontSize:64, marginBottom:16 }}>👨‍⚕️</div>
         <h2 style={{ fontSize:22, fontWeight:800, color:T.text, marginBottom:12 }}>Welcome, {profile?.name}!</h2>
-        <p style={{ color:T.muted, fontSize:14, marginBottom:8 }}>Your doctor profile is being set up.</p>
-        <p style={{ color:T.muted, fontSize:14, marginBottom:24 }}>Please contact the admin to complete your profile setup, or refresh the page in a moment.</p>
-        <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
-          <button onClick={loadData}
-            style={{ padding:"12px 24px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
-              color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:14, cursor:"pointer" }}>
-            🔄 Refresh
-          </button>
-          <button onClick={logoutUser}
-            style={{ padding:"12px 24px", background:"#fff", color:T.primary,
-              border:`2px solid ${T.primary}`, borderRadius:10, fontWeight:700, fontSize:14, cursor:"pointer" }}>
-            Sign Out
-          </button>
-        </div>
+        <p style={{ color:T.muted, fontSize:14, marginBottom:24 }}>Your doctor profile is being set up. Please refresh in a moment.</p>
+        <button onClick={loadData}
+          style={{ padding:"12px 24px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
+            color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:14, cursor:"pointer" }}>
+          🔄 Refresh
+        </button>
       </div>
     </div>
   );
+
+  // New doctor with empty clinics - go straight to Manage Schedule
+  const isNewDoctor = !doctor.clinics || doctor.clinics.length === 0;
 
   return (
     <div style={{ display:"flex", minHeight:"100vh", fontFamily:"Inter,system-ui,sans-serif", background:T.bg }}>
