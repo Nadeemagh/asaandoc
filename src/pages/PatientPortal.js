@@ -103,7 +103,9 @@ export default function PatientPortal() {
   const filtered = filterSpec === "All" ? doctors : doctors.filter(d => d.specialty === filterSpec);
 
   const getDoctorClinics = (doc) => {
-    if (doc.clinics && Array.isArray(doc.clinics)) return doc.clinics;
+    if (doc.clinics && Array.isArray(doc.clinics)) {
+      return doc.clinics; // show all, doctor controls via isOnline flag
+    }
     return [{
       name: doc.hospital || "Clinic",
       address: "",
@@ -118,7 +120,7 @@ export default function PatientPortal() {
     if (!clinic) return [];
     const dates = [];
     const holidays = selectedDoctor?.holidays?.map(h => h.date) || [];
-    for (let i = 1; i <= 14; i++) {
+    for (let i = 1; i <= 60; i++) {
       const d = addDays(today, i);
       const df = fmtDate(d);
       if (clinic.days?.includes(DAYS[d.getDay()]) && !holidays.includes(df)) {
@@ -295,6 +297,11 @@ export default function PatientPortal() {
             {/* BROWSE */}
             {view === "browse" && (
               <div>
+                <button onClick={() => setView("home")}
+                  style={{ background:"none", border:"none", color:T.primary,
+                    fontWeight:600, fontSize:14, cursor:"pointer", marginBottom:16, padding:0 }}>
+                  ← Back to Home
+                </button>
                 <h2 style={{ margin:"0 0 16px", fontSize:20, fontWeight:800, color:T.text }}>Find a Doctor</h2>
                 <div style={{ display:"flex", gap:8, marginBottom:18, flexWrap:"wrap" }}>
                   {specialties.map(s => (
@@ -496,27 +503,56 @@ export default function PatientPortal() {
                     </div>
 
                     <label style={labelStyle}>Select Date</label>
-                    <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
-                      {getAvailableDates(selectedClinic).length === 0 ? (
-                        <div style={{ color:T.muted, fontSize:13, padding:"12px 0" }}>No available dates for this clinic.</div>
-                      ) : (
-                        getAvailableDates(selectedClinic).map(d => {
-                          const dateObj = new Date(d+"T00:00:00");
-                          return (
-                            <button key={d} onClick={() => setForm(f=>({...f,date:d,slot:""}))}
-                              style={{ padding:"10px 12px", borderRadius:10,
-                                border:`2px solid ${form.date===d?T.primary:T.border}`,
-                                background:form.date===d?T.primaryLight:T.white,
-                                cursor:"pointer", color:form.date===d?T.primary:T.text,
-                                fontWeight:600, fontSize:12, textAlign:"center" }}>
-                              <div>{DAYS[dateObj.getDay()]}</div>
-                              <div style={{ fontSize:14, fontWeight:800 }}>{dateObj.getDate()}</div>
-                              <div style={{ fontSize:10, color:T.muted }}>{dateObj.toLocaleString("default",{month:"short"})}</div>
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
+                    {getAvailableDates(selectedClinic).length === 0 ? (
+                      <div style={{ color:T.muted, fontSize:13, padding:"12px 0" }}>No available dates for this clinic.</div>
+                    ) : (
+                      <div style={{ marginBottom:20 }}>
+                        {/* Group dates by month */}
+                        {Object.entries(
+                          getAvailableDates(selectedClinic).reduce((acc, d) => {
+                            const dateObj = new Date(d+"T00:00:00");
+                            const monthKey = dateObj.toLocaleString("default", { month:"long", year:"numeric" });
+                            if (!acc[monthKey]) acc[monthKey] = [];
+                            acc[monthKey].push(d);
+                            return acc;
+                          }, {})
+                        ).map(([month, dates]) => (
+                          <div key={month} style={{ marginBottom:20 }}>
+                            <div style={{ fontSize:13, fontWeight:700, color:T.primary, marginBottom:10,
+                              padding:"6px 12px", background:T.primaryLight, borderRadius:8, display:"inline-block" }}>
+                              📅 {month}
+                            </div>
+                            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:6 }}>
+                              {/* Day headers */}
+                              {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>(
+                                <div key={d} style={{ textAlign:"center", fontSize:10, fontWeight:700, color:T.muted, padding:"4px 0" }}>{d}</div>
+                              ))}
+                              {/* Empty cells for first week offset */}
+                              {(() => {
+                                const firstDate = new Date(dates[0]+"T00:00:00");
+                                const offset = (firstDate.getDay()+6)%7; // Mon=0
+                                return Array.from({length:offset},(_,i)=><div key={`e${i}`}/>);
+                              })()}
+                              {/* Date buttons */}
+                              {dates.map(d => {
+                                const dateObj = new Date(d+"T00:00:00");
+                                const selected = form.date === d;
+                                return (
+                                  <button key={d} onClick={() => setForm(f=>({...f,date:d,slot:""}))}
+                                    style={{ padding:"8px 4px", borderRadius:8, textAlign:"center",
+                                      border:`2px solid ${selected?T.primary:T.border}`,
+                                      background:selected?T.primary:T.white,
+                                      cursor:"pointer", color:selected?"#fff":T.text,
+                                      fontWeight:700, fontSize:13, transition:"all 0.15s" }}>
+                                    {dateObj.getDate()}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {form.date && (
                       <div>
