@@ -298,7 +298,7 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                   border:`2px solid ${activeClinic===i?T.primary:T.border}`,
                   background:activeClinic===i?T.primaryLight:T.white,
                   color:activeClinic===i?T.primary:T.muted }}>
-                {c.isOnline?"💻":"🏥"} {c.name?.split(" ").slice(0,2).join(" ")||`Clinic ${i+1}`}
+               {c.isOnline?"💻":"🏥"} {c.name?.split(" ").slice(0,2).join(" ")||`Clinic ${i+1}`}
               </button>
             ))}
             {clinics.length > 0 && (
