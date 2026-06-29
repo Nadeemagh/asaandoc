@@ -28,11 +28,35 @@ const toNum = (val) => {
 export const registerUser = async ({ email, password, name, role, doctorId = null }) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(cred.user, { displayName: name });
+
+  let finalDoctorId = doctorId;
+
+  // If registering as doctor, auto-create doctor document
+  if (role === "doctor") {
+    const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+    const doctorRef = doc(collection(db, "doctors"));
+    await setDoc(doctorRef, {
+      name,
+      email,
+      specialty: "General Practitioner",
+      exp: 0,
+      avatar: initials,
+      color: "#218EB6",
+      clinics: [],
+      holidays: [],
+      services: "",
+      qualifications: "",
+      createdAt: serverTimestamp(),
+    });
+    finalDoctorId = doctorRef.id;
+  }
+
   await setDoc(doc(db, "users", cred.user.uid), {
     uid: cred.user.uid, name, email, role,
-    doctorId: doctorId || null,
+    doctorId: finalDoctorId || null,
     createdAt: serverTimestamp(),
   });
+
   return cred.user;
 };
 
