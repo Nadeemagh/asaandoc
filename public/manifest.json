@@ -1,1 +1,28 @@
+{
+  "short_name": "AsaanDoc",
+  "name": "AsaanDoc - Pakistan's Healthcare Platform",
+  "description": "Book doctor appointments online - صحت کا آسان راستہ",
+  "icons": [
+    {
+      "src": "/logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#218EB6",
+  "background_color": "#218EB6",
+  "orientation": "portrait",
+  "categories": ["health", "medical"],
+  "lang": "en-PK",
+  "scope": "/"
+}
 
