@@ -152,6 +152,7 @@ export default function PatientPortal() {
         patientUid: user.uid,
         patientName: profile?.name || user.displayName || "Patient",
         patientEmail: user.email,
+        patientPhone: profile?.phone || "",
         date: form.date,
         slot: form.slot,
         reason: form.reason,
@@ -203,7 +204,7 @@ export default function PatientPortal() {
             <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11 }}>Patient Portal</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            {[["home","🏠","Home"],["browse","🔍","Doctors"],["myappts","📋","My Appointments"]].map(([v,icon,label]) => (
+            {[["home","🏠","Home"],["browse","🔍","Doctors"],["myappts","📋","My Appointments"],["profile","👤","My Profile"]].map(([v,icon,label]) => (
               <button key={v} onClick={() => setView(v)}
                 style={{ padding:"7px 12px", borderRadius:8, border:"none", cursor:"pointer", fontSize:13,
                   fontWeight:600, background:view===v?"rgba(255,255,255,0.2)":"transparent",
@@ -783,6 +784,11 @@ export default function PatientPortal() {
             )}
           </>
         )}
+
+        {/* MY PROFILE */}
+        {view === "profile" && (
+          <ProfileTab user={user} profile={profile} showToast={showToast} />
+        )}
       </div>
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
@@ -815,6 +821,82 @@ export default function PatientPortal() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── MY PROFILE COMPONENT ─────────────────────────────────────────
+function ProfileTab({ user, profile, showToast }) {
+  const [phone, setPhone] = useState(profile?.phone || "");
+  const [saving, setSaving] = useState(false);
+
+  const savePhone = async () => {
+    if (!phone.trim()) return showToast("Please enter a phone number.", "error");
+    setSaving(true);
+    try {
+      const { updateUserPhone } = await import("../firebase/services");
+      await updateUserPhone(user.uid, phone);
+      showToast("Phone number saved! ✅", "success");
+    } catch(e) {
+      showToast("Failed to save.", "error");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ maxWidth:480, margin:"0 auto", padding:"24px 0" }}>
+      <h2 style={{ margin:"0 0 20px", fontSize:20, fontWeight:800, color:T.text }}>👤 My Profile</h2>
+
+      {/* Profile Card */}
+      <div style={{ background:"#fff", borderRadius:16, padding:24, boxShadow:"0 2px 12px rgba(0,0,0,0.06)",
+        border:`1.5px solid ${T.border}`, marginBottom:16 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:24 }}>
+          <div style={{ width:60, height:60, borderRadius:"50%",
+            background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            color:"#fff", fontWeight:800, fontSize:22 }}>
+            {(profile?.name||"P").charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style={{ fontWeight:800, fontSize:18, color:T.text }}>{profile?.name || "Patient"}</div>
+            <div style={{ fontSize:13, color:T.muted }}>{user?.email}</div>
+            <div style={{ fontSize:12, color:T.accent, fontWeight:600, marginTop:2 }}>Patient Account</div>
+          </div>
+        </div>
+
+        {/* Phone Field */}
+        <div style={{ marginBottom:20 }}>
+          <label style={{ display:"block", fontSize:12, fontWeight:700, color:T.muted,
+            textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:8 }}>
+            📱 Mobile Number
+          </label>
+          <div style={{ display:"flex", gap:10 }}>
+            <div style={{ position:"relative", flex:1 }}>
+              <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)",
+                fontSize:13, color:T.muted, fontWeight:600 }}>+92</span>
+              <input type="tel" value={phone} onChange={e=>setPhone(e.target.value)}
+                placeholder="3001234567" maxLength={10}
+                style={{ padding:"11px 14px 11px 52px", borderRadius:10,
+                  border:`1.5px solid ${T.border}`, fontSize:14, color:T.text,
+                  width:"100%", outline:"none", fontFamily:"inherit" }}/>
+            </div>
+            <button onClick={savePhone} disabled={saving}
+              style={{ padding:"11px 20px", background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
+                color:"#fff", border:"none", borderRadius:10, fontWeight:700, fontSize:13,
+                cursor:saving?"not-allowed":"pointer", opacity:saving?0.7:1, whiteSpace:"nowrap" }}>
+              {saving?"Saving...":"💾 Save"}
+            </button>
+          </div>
+          {profile?.phone
+            ? <div style={{ fontSize:12, color:"#16a34a", marginTop:6, fontWeight:600 }}>✅ Current: +92{profile.phone}</div>
+            : <div style={{ fontSize:12, color:"#F59E0B", marginTop:6 }}>⚠️ No phone number added yet</div>}
+        </div>
+
+        {/* Info */}
+        <div style={{ padding:"12px 14px", background:T.bg, borderRadius:10, fontSize:12, color:T.muted }}>
+          ℹ️ Your phone number helps doctors contact you for appointment confirmations.
+        </div>
+      </div>
     </div>
   );
 }
