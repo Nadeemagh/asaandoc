@@ -1,44 +1,43 @@
 // src/pages/AuthPage.js
 import { useState } from "react";
-import { T, inputStyle, labelStyle, btnPrimary, Toast } from "../components/UI";
+import { T, Toast } from "../components/UI";
 import { registerUser, loginUser } from "../firebase/services";
 
 export default function AuthPage() {
-  const [mode, setMode]       = useState("login");   // login | register
-  const [role, setRole]       = useState("patient"); // patient | doctor
-  const [form, setForm]       = useState({ name: "", email: "", password: "", confirm: "" });
+  const [mode, setMode] = useState("login");
+  const [role, setRole] = useState("patient");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [toast, setToast]     = useState(null);
+  const [toast, setToast] = useState(null);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  const showToast = (msg, type = "error") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 4000);
-  };
+  const showToast = (msg, type="error") => { setToast({msg,type}); setTimeout(()=>setToast(null),4000); };
 
   const handleSubmit = async () => {
-    if (!form.email || !form.password) return showToast("Email and password required.");
-    if (mode === "register") {
-      if (!form.name) return showToast("Full name required.");
-      if (form.password !== form.confirm) return showToast("Passwords do not match.");
-      if (form.password.length < 6) return showToast("Password must be at least 6 characters.");
+    if (mode==="register") {
+      if (!name.trim()) return showToast("Please enter your full name.");
+      if (!email.trim()) return showToast("Please enter your email.");
+      if (role==="patient" && !phone.trim()) return showToast("Please enter your mobile number.");
+      if (password.length < 6) return showToast("Password must be at least 6 characters.");
+      if (password !== confirm) return showToast("Passwords do not match.");
     }
     setLoading(true);
     try {
-      if (mode === "register") {
-        await registerUser({ email: form.email, password: form.password, name: form.name, role });
-        showToast("Account created! Welcome to AsaanDoc.", "success");
+      if (mode==="register") {
+        await registerUser({ email, password, name, role, phone: phone||"" });
+        showToast("Account created! Welcome to AsaanDoc 🎉", "success");
       } else {
-        await loginUser(form.email, form.password);
+        await loginUser(email, password);
       }
-    } catch (e) {
+    } catch(e) {
       const msgs = {
-        "auth/user-not-found":   "No account found with this email.",
-        "auth/wrong-password":   "Incorrect password.",
         "auth/email-already-in-use": "Email already registered. Please login.",
-        "auth/invalid-email":    "Invalid email address.",
-        "auth/too-many-requests":"Too many attempts. Try again later.",
+        "auth/user-not-found": "No account found. Please register.",
+        "auth/wrong-password": "Incorrect password.",
+        "auth/invalid-email": "Invalid email address.",
         "auth/invalid-credential": "Invalid email or password.",
       };
       showToast(msgs[e.code] || e.message);
@@ -46,105 +45,130 @@ export default function AuthPage() {
     setLoading(false);
   };
 
-  return (
-    <div style={{ minHeight: "100vh", background: `linear-gradient(135deg,#155f7a 0%,#218EB6 60%,#00C897 100%)`,
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "Inter,system-ui,sans-serif" }}>
+  const inp = {
+    padding:"12px 16px", borderRadius:10, border:`1.5px solid ${T.border}`,
+    fontSize:14, color:T.text, width:"100%", outline:"none", fontFamily:"inherit",
+    background:"#fff", transition:"border-color 0.2s",
+  };
+  const lbl = {
+    display:"block", fontSize:11, fontWeight:700, color:T.muted,
+    textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:6,
+  };
 
-      <div style={{ maxWidth: 420, width: "100%" }}>
+  return (
+    <div style={{ minHeight:"100vh", background:`linear-gradient(135deg,${T.primaryDark} 0%,${T.primary} 50%,#00C897 100%)`,
+      display:"flex", alignItems:"center", justifyContent:"center", padding:20, fontFamily:"Inter,system-ui,sans-serif" }}>
+
+      <div style={{ width:"100%", maxWidth:460 }}>
         {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 52, marginBottom: 10 }}>🏥</div>
-          <h1 style={{ color: "#fff", fontSize: 32, fontWeight: 900, letterSpacing: "-1px", margin: 0 }}>AsaanDoc</h1>
-          <p style={{ color: "rgba(255,255,255,0.65)", margin: "6px 0 0", fontSize: 14 }}>
+        <div style={{ textAlign:"center", marginBottom:28 }}>
+          <img src="/logo.png" alt="AsaanDoc" style={{ height:48, filter:"brightness(0) invert(1)", marginBottom:12 }}
+            onError={e=>{e.target.style.display="none";}} />
+          <div style={{ color:"rgba(255,255,255,0.9)", fontSize:13 }}>صحت کا آسان راستہ</div>
+          <div style={{ color:"rgba(255,255,255,0.7)", fontSize:12, marginTop:4 }}>
             Pakistan's Online Healthcare Platform
-          </p>
+          </div>
         </div>
 
-        <div style={{ background: T.white, borderRadius: 20, padding: "28px 28px", boxShadow: "0 24px 60px rgba(0,0,0,0.25)" }}>
-          {/* Mode tabs */}
-          <div style={{ display: "flex", background: T.bg, borderRadius: 10, padding: 4, marginBottom: 22, gap: 4 }}>
-            {["login","register"].map(m => (
-              <button key={m} onClick={() => setMode(m)}
-                style={{ flex: 1, padding: "9px", borderRadius: 8, border: "none", cursor: "pointer",
-                  fontWeight: 700, fontSize: 13, background: mode === m ? T.white : "transparent",
-                  color: mode === m ? T.primary : T.muted,
-                  boxShadow: mode === m ? "0 2px 8px rgba(0,0,0,0.08)" : "none" }}>
-                {m === "login" ? "Sign In" : "Create Account"}
+        {/* Card */}
+        <div style={{ background:"#fff", borderRadius:20, padding:32, boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
+          {/* Tabs */}
+          <div style={{ display:"flex", background:T.bg, borderRadius:12, padding:4, marginBottom:24 }}>
+            {[["login","Sign In"],["register","Create Account"]].map(([m,label])=>(
+              <button key={m} onClick={()=>setMode(m)}
+                style={{ flex:1, padding:"10px", borderRadius:9, border:"none", cursor:"pointer",
+                  fontWeight:700, fontSize:13, transition:"all 0.2s",
+                  background:mode===m?"#fff":"transparent",
+                  color:mode===m?T.primary:T.muted,
+                  boxShadow:mode===m?"0 2px 8px rgba(0,0,0,0.1)":"none" }}>
+                {label}
               </button>
             ))}
           </div>
 
-          {/* Role selector */}
-          <div style={{ marginBottom: 18 }}>
-            <div style={labelStyle}>I am a</div>
-            <div style={{ display: "flex", gap: 10 }}>
-              {[["patient","🧑‍💼","Patient"],["doctor","👨‍⚕️","Doctor"]].map(([r, icon, label]) => (
-                <button key={r} onClick={() => setRole(r)}
-                  style={{ flex: 1, padding: "12px 10px", border: `2px solid ${role === r ? T.primary : T.border}`,
-                    borderRadius: 10, background: role === r ? T.primaryLight : T.white,
-                    cursor: "pointer", textAlign: "center" }}>
-                  <div style={{ fontSize: 24 }}>{icon}</div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: role === r ? T.primary : T.muted, marginTop: 4 }}>{label}</div>
-                </button>
-              ))}
+          {/* Role selector - only on register */}
+          {mode==="register" && (
+            <div style={{ marginBottom:20 }}>
+              <label style={lbl}>I Am A</label>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                {[["patient","🧑","Patient"],["doctor","👨‍⚕️","Doctor"]].map(([r,icon,label])=>(
+                  <button key={r} onClick={()=>setRole(r)}
+                    style={{ padding:"14px", borderRadius:12, cursor:"pointer", textAlign:"center",
+                      border:`2px solid ${role===r?T.primary:T.border}`,
+                      background:role===r?T.primaryLight:"#fff",
+                      color:role===r?T.primary:T.muted, fontWeight:700, fontSize:13 }}>
+                    <div style={{ fontSize:24, marginBottom:4 }}>{icon}</div>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Fields */}
-          <div style={{ display: "grid", gap: 14 }}>
-            {mode === "register" && (
-              <div>
-                <label style={labelStyle}>Full Name</label>
-                <input value={form.name} onChange={e => set("name", e.target.value)}
-                  placeholder="e.g. Ahmed Raza" style={inputStyle} />
-              </div>
-            )}
-            <div>
-              <label style={labelStyle}>Email Address</label>
-              <input type="email" value={form.email} onChange={e => set("email", e.target.value)}
-                placeholder="you@example.com" style={inputStyle} />
+          {mode==="register" && (
+            <div style={{ marginBottom:16 }}>
+              <label style={lbl}>Full Name</label>
+              <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Ahmed Ali" style={inp}/>
             </div>
-            <div>
-              <label style={labelStyle}>Password</label>
-              <input type="password" value={form.password} onChange={e => set("password", e.target.value)}
-                placeholder="Minimum 6 characters" style={inputStyle} />
-            </div>
-            {mode === "register" && (
-              <div>
-                <label style={labelStyle}>Confirm Password</label>
-                <input type="password" value={form.confirm} onChange={e => set("confirm", e.target.value)}
-                  placeholder="Re-enter password" style={inputStyle} />
-              </div>
-            )}
+          )}
+
+          <div style={{ marginBottom:16 }}>
+            <label style={lbl}>Email Address</label>
+            <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
+              placeholder="you@example.com" style={inp}/>
           </div>
 
-          {mode === "register" && role === "doctor" && (
-            <div style={{ marginTop: 14, padding: "12px 14px", background: "#fffbeb", borderRadius: 10,
-              border: "1.5px solid #F59E0B", fontSize: 13, color: "#92400e" }}>
-              💡 After registering, contact <strong>admin@asaandoc.com</strong> to link your account to your doctor profile.
+          {/* Phone - only for patients on register */}
+          {mode==="register" && role==="patient" && (
+            <div style={{ marginBottom:16 }}>
+              <label style={lbl}>Mobile Number <span style={{ color:"#EF4444" }}>*</span></label>
+              <div style={{ position:"relative" }}>
+                <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)",
+                  fontSize:13, color:T.muted, fontWeight:600 }}>+92</span>
+                <input type="tel" value={phone} onChange={e=>setPhone(e.target.value)}
+                  placeholder="3001234567" maxLength={10}
+                  style={{ ...inp, paddingLeft:52 }}/>
+              </div>
+              <div style={{ fontSize:11, color:T.muted, marginTop:4 }}>Required for appointment confirmations</div>
+            </div>
+          )}
+
+          <div style={{ marginBottom:16 }}>
+            <label style={lbl}>Password</label>
+            <input type="password" value={password} onChange={e=>setPassword(e.target.value)}
+              placeholder="Minimum 6 characters" style={inp}/>
+          </div>
+
+          {mode==="register" && (
+            <div style={{ marginBottom:16 }}>
+              <label style={lbl}>Confirm Password</label>
+              <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)}
+                placeholder="Repeat password" style={inp}/>
             </div>
           )}
 
           <button onClick={handleSubmit} disabled={loading}
-            style={{ ...btnPrimary, marginTop: 20, opacity: loading ? 0.7 : 1, cursor: loading ? "not-allowed" : "pointer" }}>
-            {loading ? "Please wait..." : mode === "login" ? "Sign In →" : "Create Account →"}
+            style={{ width:"100%", padding:"14px", marginTop:8,
+              background:loading?"#ccc":`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
+              color:"#fff", border:"none", borderRadius:12, fontWeight:800, fontSize:15,
+              cursor:loading?"not-allowed":"pointer", letterSpacing:"0.3px" }}>
+            {loading ? "Please wait..." : mode==="login" ? "Sign In →" : "Create Account →"}
           </button>
 
-          <div style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: T.muted }}>
-            {mode === "login" ? "Don't have an account? " : "Already registered? "}
-            <button onClick={() => setMode(mode === "login" ? "register" : "login")}
-              style={{ background: "none", border: "none", color: T.primary, fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
-              {mode === "login" ? "Sign Up" : "Sign In"}
-            </button>
+          <div style={{ textAlign:"center", marginTop:16, fontSize:13, color:T.muted }}>
+            {mode==="login"
+              ? <>Don't have an account? <button onClick={()=>setMode("register")} style={{ background:"none", border:"none", color:T.primary, fontWeight:700, cursor:"pointer" }}>Sign Up</button></>
+              : <>Already registered? <button onClick={()=>setMode("login")} style={{ background:"none", border:"none", color:T.primary, fontWeight:700, cursor:"pointer" }}>Sign In</button></>}
           </div>
         </div>
 
-        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 20 }}>
+        <div style={{ textAlign:"center", color:"rgba(255,255,255,0.5)", fontSize:11, marginTop:20 }}>
           © 2025 AsaanDoc · asaandoc.com
-        </p>
+        </div>
       </div>
 
-      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
     </div>
   );
 }
