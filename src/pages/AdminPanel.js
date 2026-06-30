@@ -19,7 +19,7 @@ export default function AdminPanel() {
   const [filterDoc, setFilterDoc] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
   const [search, setSearch] = useState("");
-  const [sidebar, setSidebar] = useState(true);
+  const [sidebar, setSidebar] = useState(window.innerWidth > 768);
 
   const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),3000); };
 
@@ -72,8 +72,23 @@ export default function AdminPanel() {
   return (
     <div style={{display:"flex",minHeight:"100vh",fontFamily:"Inter,system-ui,sans-serif",background:T.bg}}>
 
+      {/* Mobile overlay */}
+      {sidebar && window.innerWidth <= 768 && (
+        <div onClick={()=>setSidebar(false)}
+          style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:9}}/>
+      )}
+
       {/* SIDEBAR */}
-      <div style={{width:sidebar?230:64,background:"linear-gradient(180deg,#1a2e3b,#0a1929)",display:"flex",flexDirection:"column",flexShrink:0,transition:"width 0.25s",overflow:"hidden",boxShadow:"4px 0 20px rgba(0,0,0,0.2)",position:"relative",zIndex:10}}>
+      <div style={{
+        width: sidebar ? 230 : (window.innerWidth<=768 ? 0 : 64),
+        minWidth: sidebar ? 230 : (window.innerWidth<=768 ? 0 : 64),
+        background:"linear-gradient(180deg,#1a2e3b,#0a1929)",
+        display:"flex", flexDirection:"column", flexShrink:0, transition:"width 0.25s, min-width 0.25s",
+        overflow:"hidden", boxShadow:"4px 0 20px rgba(0,0,0,0.2)",
+        position: window.innerWidth<=768 ? "fixed" : "relative",
+        top:0, left:0, bottom:0, zIndex:10,
+        height: window.innerWidth<=768 ? "100vh" : "auto"
+      }}>
         <div style={{padding:"18px 14px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:sidebar?12:0}}>
             {sidebar ? <img src="/logo.png" alt="AsaanDoc" style={{height:32,filter:"brightness(0) invert(1)"}} onError={e=>{e.target.style.display="none";}} /> : <span style={{fontSize:22}}>⚙️</span>}
@@ -86,7 +101,7 @@ export default function AdminPanel() {
         </div>
         <div style={{padding:"10px 8px",flex:1}}>
           {nav.map(([v,icon,label])=>(
-            <button key={v} onClick={()=>setView(v)}
+            <button key={v} onClick={()=>{ setView(v); if(window.innerWidth<=768) setSidebar(false); }}
               style={{width:"100%",padding:"11px 10px",borderRadius:10,border:"none",cursor:"pointer",marginBottom:4,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:view===v?"rgba(255,165,0,0.2)":"transparent",color:view===v?"#FFA500":"rgba(255,255,255,0.55)",fontWeight:600,fontSize:13,whiteSpace:"nowrap"}}>
               <span style={{fontSize:16,flexShrink:0}}>{icon}</span>{sidebar&&label}
             </button>
@@ -105,12 +120,20 @@ export default function AdminPanel() {
       {/* MAIN */}
       <div style={{flex:1,overflow:"auto"}}>
         <div style={{background:T.white,padding:"14px 24px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:"0 2px 8px rgba(0,0,0,0.04)",position:"sticky",top:0,zIndex:9}}>
-          <div>
-            <div style={{fontWeight:800,fontSize:18,color:T.text}}>
-              {view==="dashboard"&&"Admin Dashboard"}{view==="doctors"&&"Manage Doctors"}
-              {view==="patients"&&"All Patients"}{view==="appointments"&&"All Appointments"}{view==="analytics"&&"Analytics"}
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <button onClick={()=>setSidebar(o=>!o)}
+              style={{display:window.innerWidth<=768?"flex":"none",alignItems:"center",justifyContent:"center",
+                width:38,height:38,borderRadius:10,border:`1.5px solid ${T.border}`,
+                background:T.white,cursor:"pointer",fontSize:18,color:T.text}}>
+              ☰
+            </button>
+            <div>
+              <div style={{fontWeight:800,fontSize:18,color:T.text}}>
+                {view==="dashboard"&&"Admin Dashboard"}{view==="doctors"&&"Manage Doctors"}
+                {view==="patients"&&"All Patients"}{view==="appointments"&&"All Appointments"}{view==="analytics"&&"Analytics"}
+              </div>
+              <div style={{fontSize:12,color:T.muted}}>{new Date().toLocaleDateString("en-PK",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</div>
             </div>
-            <div style={{fontSize:12,color:T.muted}}>{new Date().toLocaleDateString("en-PK",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</div>
           </div>
           <button onClick={load} style={{padding:"7px 14px",background:T.primaryLight,color:T.primary,border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"}}>🔄 Refresh</button>
         </div>
