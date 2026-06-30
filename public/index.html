@@ -2,19 +2,54 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="%PUBLIC_URL%/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <meta name="theme-color" content="#218EB6" />
-    <meta name="description" content="AsaanDoc - Online Doctor Appointment System" />
-    <title>AsaanDoc | Appointment System</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <meta name="description" content="AsaanDoc - Book doctor appointments online. Pakistan's Healthcare Platform. صحت کا آسان راستہ" />
+
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="AsaanDoc" />
+    <meta name="application-name" content="AsaanDoc" />
+    <meta name="msapplication-TileColor" content="#218EB6" />
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="%PUBLIC_URL%/logo.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/logo.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="%PUBLIC_URL%/logo.png" />
+
+    <!-- Manifest -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="AsaanDoc - Pakistan's Healthcare Platform" />
+    <meta property="og:description" content="Book doctor appointments online - صحت کا آسان راستہ" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://asaandoc11.vercel.app" />
+
+    <title>AsaanDoc | Pakistan's Healthcare Platform</title>
+
     <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: #f4f8fa; }
+      * { -webkit-tap-highlight-color: transparent; }
+      body { margin: 0; font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
       #root { min-height: 100vh; }
     </style>
   </head>
   <body>
+    <noscript>You need to enable JavaScript to run AsaanDoc.</noscript>
     <div id="root"></div>
+    <script>
+      // Register Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(reg => console.log('SW registered:', reg.scope))
+            .catch(err => console.log('SW error:', err));
+        });
+      }
+    </script>
   </body>
 </html>
