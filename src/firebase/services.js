@@ -25,7 +25,7 @@ const toNum = (val) => {
 
 // ─── AUTH ─────────────────────────────────────────────────────────
 
-export const registerUser = async ({ email, password, name, role, doctorId = null }) => {
+export const registerUser = async ({ email, password, name, role, phone = "", doctorId = null }) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(cred.user, { displayName: name });
 
@@ -53,6 +53,7 @@ export const registerUser = async ({ email, password, name, role, doctorId = nul
 
   await setDoc(doc(db, "users", cred.user.uid), {
     uid: cred.user.uid, name, email, role,
+    phone: phone || "",
     doctorId: finalDoctorId || null,
     createdAt: serverTimestamp(),
   });
