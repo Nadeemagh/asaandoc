@@ -866,6 +866,7 @@ export default function DoctorDashboard() {
                             <span style={{fontWeight:800,fontSize:16,color:T.text}}>{getP(a)}</span><Badge status={a.status}/>
                           </div>
                           {a.patientEmail&&<div style={{fontSize:12,color:T.primary,fontWeight:600,marginBottom:4}}>📧 {a.patientEmail}</div>}
+                          {a.patientPhone&&<div style={{fontSize:12,color:"#16a34a",fontWeight:600,marginBottom:4}}>📱 +92{a.patientPhone}</div>}
                           {a.clinicName&&<div style={{fontSize:12,color:T.text,fontWeight:600,marginBottom:4}}>🏥 {a.clinicName}</div>}
                           {a.clinicAddress&&<div style={{fontSize:11,color:T.muted,marginBottom:4}}>📍 {a.clinicAddress}</div>}
                           <div style={{display:"flex",gap:14,flexWrap:"wrap",marginTop:4}}>
