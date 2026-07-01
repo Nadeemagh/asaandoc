@@ -4,6 +4,7 @@ import { T, Badge, Card, StatCard, Toast, Spinner } from "../components/UI";
 import { getAppointmentsByDoctor, updateAppointmentStatus, getDoctors, updateDoctorSchedule, updateDoctorProfile, addHoliday, removeHoliday } from "../firebase/services";
 import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
+import PrescriptionPortal from "./PrescriptionPortal";
 
 const today = new Date();
 const fmtDate = (d) => d.toISOString().split("T")[0];
