@@ -18,7 +18,7 @@
 import { useState, useRef } from "react";
 import {
   collection, addDoc, getDocs, query,
-  where, orderBy, serverTimestamp, doc, getDoc,
+  where, orderBy, serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase/config"; // ← your existing firebase config
 
