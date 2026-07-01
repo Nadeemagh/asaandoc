@@ -71,26 +71,6 @@ function InputField({ label, value, onChange, placeholder, type = "text", requir
   );
 }
 
-function SelectField({ label, value, onChange, options }) {
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: C.gray600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</label>
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        style={{
-          width: "100%", padding: "9px 12px", border: `1.5px solid ${C.gray200}`,
-          borderRadius: 8, fontSize: 14, color: C.gray800, background: C.white,
-          outline: "none", fontFamily: "inherit", cursor: "pointer",
-        }}
-        onFocus={e => e.target.style.borderColor = C.teal}
-        onBlur={e => e.target.style.borderColor = C.gray200}
-      >
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </div>
-  );
-}
 
 function Btn({ children, onClick, variant = "primary", small, disabled, style: extraStyle = {} }) {
   const base = {
