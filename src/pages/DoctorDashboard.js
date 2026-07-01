@@ -571,7 +571,7 @@ export default function DoctorDashboard() {
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg,fontFamily:"Inter,system-ui,sans-serif"}}>
       <div style={{textAlign:"center",maxWidth:400,padding:40}}>
         <div style={{fontSize:64,marginBottom:16}}>👨‍⚕️</div>
-        <h2 style={{fontSize:22,fontWeight:800,color:T.text,marginBottom:12}}>Welcome, {profile?.name}!</h2>
+        <h2 style={{fontSize:22,fontWeight:800,color:T.text,marginBottom:12}}>Welcome, Dr. {(doctor?.name||profile?.name||"").split(" ")[0]}!</h2>
         <p style={{color:T.muted,fontSize:14,marginBottom:24}}>Your profile is being set up. Please refresh in a moment.</p>
         <div style={{display:"flex",gap:10,justifyContent:"center"}}>
           <button onClick={loadData} style={{padding:"12px 24px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>🔄 Refresh</button>
@@ -613,7 +613,7 @@ export default function DoctorDashboard() {
                 ?<img src={doctor.photo} alt={doctor.name} style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",border:"2px solid rgba(255,255,255,0.3)",flexShrink:0}} onError={e=>{e.target.style.display="none";}}/>
                 :<div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:14,flexShrink:0}}>{doctor.avatar||"DR"}</div>}
               <div style={{minWidth:0}}>
-                <div style={{color:"#fff",fontWeight:700,fontSize:12,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{profile?.name||doctor.name}</div>
+                <div style={{color:"#fff",fontWeight:700,fontSize:12,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Dr. {(doctor?.name||profile?.name||"").split(" ")[0]}</div>
                 <div style={{color:"rgba(255,255,255,0.5)",fontSize:10}}>{doctor.specialty}</div>
               </div>
             </div>
