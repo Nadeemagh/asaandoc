@@ -101,7 +101,7 @@ function MedRow({ med, onChange, onRemove, index }) {
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
         <div style={{marginBottom:12}}>
-          <label style={{ display:"block", fontSize:12, fontWeight:600, color:C.gray600, marginBottom:4, textTransform:"uppercase", letterSpacing:"0.05em" }}>Medicine Name *</label>
+          <label style={{ display:"block", fontSize:12, fontWeight:600, color:C.gray600, marginBottom:4, textTransform:"uppercase", letterSpacing:"0.05em" }}>Medicine Name</label>
           <input value={med.name} onChange={e=>f("name",e.target.value)} placeholder="e.g. Paracetamol"
             style={{ width:"100%", boxSizing:"border-box", padding:"8px 12px", border:`1.5px solid ${C.gray200}`, borderRadius:8, fontSize:14, fontFamily:"inherit", outline:"none" }}
             onFocus={e=>e.target.style.borderColor=C.teal} onBlur={e=>e.target.style.borderColor=C.gray200} />
@@ -318,7 +318,6 @@ export default function PrescriptionPortal({ doctor: propDoctor, patients: propP
   };
 
   const generatePreview = () => {
-    if (!medicines.some(m=>m.name)) { showToast("⚠️ Add at least one medicine"); return; }
     setRxData({
       rxId: rxId(), date: todayStr(),
       patientName: selectedPatient.name,
