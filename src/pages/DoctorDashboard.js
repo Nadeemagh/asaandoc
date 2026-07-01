@@ -859,7 +859,7 @@ export default function DoctorDashboard() {
           {view==="prescriptions"&&(
             <PrescriptionPortal
               doctor={{
-                name: doctor?.name || profile?.name || "Doctor",
+               name: doctor?.name || "Doctor",
                 specialty: doctor?.specialty || "",
                 qualification: doctor?.qualifications || "",
                 license: doctor?.license || doctor?.pmcNo || "—",
