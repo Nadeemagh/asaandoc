@@ -571,7 +571,7 @@ export default function DoctorDashboard() {
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg,fontFamily:"Inter,system-ui,sans-serif"}}>
       <div style={{textAlign:"center",maxWidth:400,padding:40}}>
         <div style={{fontSize:64,marginBottom:16}}>👨‍⚕️</div>
-        <h2 style={{fontSize:22,fontWeight:800,color:T.text,marginBottom:12}}>Welcome, Dr. {(doctor?.name||profile?.name||"").split(" ")[0]}!</h2>
+        <h2 style={{fontSize:22,fontWeight:800,color:T.text,marginBottom:12}}>Welcome, Dr. {(()=>{ const parts=(doctor?.name||profile?.name||"").split(" "); const skip=["dr.","rd.","prof.","mr.","ms.","mrs."]; return parts.find(p=>!skip.includes(p.toLowerCase()))||parts[0]; })()}</h2>
         <p style={{color:T.muted,fontSize:14,marginBottom:24}}>Your profile is being set up. Please refresh in a moment.</p>
         <div style={{display:"flex",gap:10,justifyContent:"center"}}>
           <button onClick={loadData} style={{padding:"12px 24px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>🔄 Refresh</button>
@@ -688,7 +688,7 @@ export default function DoctorDashboard() {
             <div>
               <div style={{marginBottom:22}}>
                 <h2 style={{margin:"0 0 4px",fontSize:20,fontWeight:800,color:T.text}}>
-                  Good {new Date().getHours()<12?"Morning":new Date().getHours()<17?"Afternoon":"Evening"}, Dr. {(doctor?.name||profile?.name||"Doctor").split(" ")[0]} 👋
+                  Good {new Date().getHours()<12?"Morning":new Date().getHours()<17?"Afternoon":"Evening"}, Dr. {(()=>{ const parts=(doctor?.name||profile?.name||"Doctor").split(" "); const skip=["dr.","rd.","prof.","mr.","ms.","mrs."]; return parts.find(p=>!skip.includes(p.toLowerCase()))||parts[0]; })()} 👋
                 </h2>
                 <p style={{margin:0,color:T.muted,fontSize:13}}>Here's your appointments overview.</p>
               </div>
