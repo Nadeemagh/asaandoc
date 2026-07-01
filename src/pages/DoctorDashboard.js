@@ -35,6 +35,14 @@ const fmtDateLong = (d) => {
   catch { return d; }
 };
 
+// ── Smart first name extractor (skips titles like Dr., RD., Prof.) ──
+const getFirstName = (name) => {
+  if (!name) return "Doctor";
+  const skip = ["dr.", "rd.", "prof.", "mr.", "ms.", "mrs.", "dr", "rd", "prof"];
+  const parts = name.trim().split(/\s+/);
+  return parts.find(p => !skip.includes(p.toLowerCase())) || parts[0];
+};
+
 // ─── PDF GENERATORS ───────────────────────────────────────────────
 const generateDailyReportPDF = (appointments, doctor, date) => {
   const dateStr = new Date(date + "T00:00:00").toLocaleDateString("en-PK", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
@@ -140,65 +148,36 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
     if (doctor?.qualifications) setQualifications(doctor.qualifications);
   }, [doctor]);
 
-  const updateClinicField = (ci, field, val) => {
-    const u = JSON.parse(JSON.stringify(clinics));
-    u[ci][field] = val;
-    setClinics(u);
-  };
-  const toggleDay = (ci, day) => {
-    const u = JSON.parse(JSON.stringify(clinics));
-    const days = u[ci].days || [];
-    u[ci].days = days.includes(day) ? days.filter(d=>d!==day) : [...days,day];
-    setClinics(u);
-  };
-  const toggleSlot = (ci, slot) => {
-    const u = JSON.parse(JSON.stringify(clinics));
-    const slots = u[ci].slots || [];
-    u[ci].slots = slots.includes(slot) ? slots.filter(s=>s!==slot) : [...slots,slot].sort();
-    setClinics(u);
-  };
+  const updateClinicField = (ci, field, val) => { const u = JSON.parse(JSON.stringify(clinics)); u[ci][field] = val; setClinics(u); };
+  const toggleDay = (ci, day) => { const u = JSON.parse(JSON.stringify(clinics)); const days = u[ci].days || []; u[ci].days = days.includes(day) ? days.filter(d=>d!==day) : [...days,day]; setClinics(u); };
+  const toggleSlot = (ci, slot) => { const u = JSON.parse(JSON.stringify(clinics)); const slots = u[ci].slots || []; u[ci].slots = slots.includes(slot) ? slots.filter(s=>s!==slot) : [...slots,slot].sort(); setClinics(u); };
 
   const saveSchedule = async () => {
     setSaving(true);
-    try {
-      await updateDoctorSchedule(doctor.id, clinics);
-      await onUpdate();
-      showToast("Schedule saved! ✅");
-      setTimeout(() => window.location.reload(), 1500);
-    } catch { showToast("Failed to save.", "error"); }
+    try { await updateDoctorSchedule(doctor.id, clinics); await onUpdate(); showToast("Schedule saved! ✅"); setTimeout(() => window.location.reload(), 1500); }
+    catch { showToast("Failed to save.", "error"); }
     setSaving(false);
   };
 
   const saveProfile = async () => {
     setSaving(true);
-    try {
-      await updateDoctorProfile(doctor.id, { exp, services, qualifications, photo });
-      await onUpdate();
-      showToast("Profile saved! ✅");
-      setTimeout(() => window.location.reload(), 1500);
-    } catch { showToast("Failed to save.", "error"); }
+    try { await updateDoctorProfile(doctor.id, { exp, services, qualifications, photo }); await onUpdate(); showToast("Profile saved! ✅"); setTimeout(() => window.location.reload(), 1500); }
+    catch { showToast("Failed to save.", "error"); }
     setSaving(false);
   };
 
   const handleAddHoliday = async () => {
     if (!newHolidayDate) return;
     setSaving(true);
-    try {
-      await addHoliday(doctor.id, newHolidayDate, newHolidayReason);
-      setHolidays(prev=>[...prev,{date:newHolidayDate,reason:newHolidayReason||"Holiday"}]);
-      setNewHolidayDate(""); setNewHolidayReason("");
-      showToast("Holiday marked! ✅");
-    } catch { showToast("Failed.","error"); }
+    try { await addHoliday(doctor.id, newHolidayDate, newHolidayReason); setHolidays(prev=>[...prev,{date:newHolidayDate,reason:newHolidayReason||"Holiday"}]); setNewHolidayDate(""); setNewHolidayReason(""); showToast("Holiday marked! ✅"); }
+    catch { showToast("Failed.","error"); }
     setSaving(false);
   };
 
   const handleRemoveHoliday = async (date) => {
     setSaving(true);
-    try {
-      await removeHoliday(doctor.id, date);
-      setHolidays(prev=>prev.filter(h=>h.date!==date));
-      showToast("Holiday removed.");
-    } catch { showToast("Failed.","error"); }
+    try { await removeHoliday(doctor.id, date); setHolidays(prev=>prev.filter(h=>h.date!==date)); showToast("Holiday removed."); }
+    catch { showToast("Failed.","error"); }
     setSaving(false);
   };
 
@@ -211,8 +190,6 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
   return (
     <div>
       <h2 style={{margin:"0 0 20px",fontSize:18,fontWeight:800,color:T.text}}>⚙️ Manage Schedule</h2>
-
-      {/* Main Tabs */}
       <div style={{display:"flex",gap:8,marginBottom:20,borderBottom:`2px solid ${T.border}`,paddingBottom:12}}>
         {[["clinics","🏥","Clinic Schedule"],["profile","👨","Profile & Services"],["holidays","🏖️","Holidays"]].map(([tab,icon,label])=>(
           <button key={tab} onClick={()=>setActiveTab(tab)}
@@ -223,23 +200,16 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
         ))}
       </div>
 
-      {/* CLINIC SCHEDULE */}
       {activeTab === "clinics" && (
         <div>
-          {/* No clinics yet */}
           {clinics.length === 0 && (
             <div style={{padding:"28px",textAlign:"center",background:"#f0f9ff",border:"2px dashed #218EB6",borderRadius:14,marginBottom:20}}>
               <div style={{fontSize:48,marginBottom:12}}>🏥</div>
               <h3 style={{fontSize:16,fontWeight:700,color:T.text,marginBottom:8}}>No Clinics Added Yet</h3>
               <p style={{color:T.muted,fontSize:13,marginBottom:20}}>Add your clinic locations where patients can book appointments.</p>
-              <button onClick={addClinic}
-                style={{padding:"12px 24px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>
-                + Add First Clinic
-              </button>
+              <button onClick={addClinic} style={{padding:"12px 24px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>+ Add First Clinic</button>
             </div>
           )}
-
-          {/* Clinic tabs */}
           {clinics.length > 0 && (
             <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap",alignItems:"center"}}>
               {clinics.map((c,i)=>(
@@ -251,57 +221,39 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                   {c.isOnline?"💻":"🏥"} {c.name?.split(" ").slice(0,2).join(" ")||`Clinic ${i+1}`}
                 </button>
               ))}
-              <button onClick={addClinic}
-                style={{padding:"8px 16px",borderRadius:10,fontWeight:600,fontSize:13,cursor:"pointer",
-                  border:`2px dashed ${T.border}`,background:T.white,color:T.muted}}>
-                + Add Clinic
-              </button>
+              <button onClick={addClinic} style={{padding:"8px 16px",borderRadius:10,fontWeight:600,fontSize:13,cursor:"pointer",border:`2px dashed ${T.border}`,background:T.white,color:T.muted}}>+ Add Clinic</button>
             </div>
           )}
-
           {clinics[activeClinic] && (
             <Card style={{marginBottom:20}}>
-              {/* Clinic Name */}
               <div style={{marginBottom:16}}>
                 <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Clinic Name</label>
-                <input value={clinics[activeClinic].name||""} onChange={e=>updateClinicField(activeClinic,"name",e.target.value)}
-                  placeholder="e.g. City Medical Center"
+                <input value={clinics[activeClinic].name||""} onChange={e=>updateClinicField(activeClinic,"name",e.target.value)} placeholder="e.g. City Medical Center"
                   style={{padding:"10px 14px",borderRadius:9,border:`1.5px solid ${T.border}`,fontSize:14,color:T.text,width:"100%",outline:"none",fontFamily:"inherit"}}/>
               </div>
-
-              {/* Online Toggle */}
               <div style={{marginBottom:16,padding:"12px 14px",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"space-between",
-                background:clinics[activeClinic].isOnline?"#f0fdf4":"#f8fafc",
-                border:`1.5px solid ${clinics[activeClinic].isOnline?"#86efac":T.border}`}}>
+                background:clinics[activeClinic].isOnline?"#f0fdf4":"#f8fafc",border:`1.5px solid ${clinics[activeClinic].isOnline?"#86efac":T.border}`}}>
                 <div>
                   <div style={{fontWeight:700,fontSize:13,color:T.text}}>💻 Online Consultation</div>
                   <div style={{fontSize:11,color:T.muted}}>Enable if patients can book online sessions</div>
                 </div>
                 <button onClick={()=>updateClinicField(activeClinic,"isOnline",!clinics[activeClinic].isOnline)}
-                  style={{padding:"7px 16px",borderRadius:20,fontWeight:700,fontSize:12,cursor:"pointer",border:"none",
-                    background:clinics[activeClinic].isOnline?"#EF4444":"#16a34a",color:"#fff"}}>
+                  style={{padding:"7px 16px",borderRadius:20,fontWeight:700,fontSize:12,cursor:"pointer",border:"none",background:clinics[activeClinic].isOnline?"#EF4444":"#16a34a",color:"#fff"}}>
                   {clinics[activeClinic].isOnline?"Disable":"Enable"}
                 </button>
               </div>
-
-              {/* Address - only for in-person */}
               {!clinics[activeClinic].isOnline && (
                 <div style={{marginBottom:16}}>
                   <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Clinic Address</label>
-                  <input value={clinics[activeClinic].address||""} onChange={e=>updateClinicField(activeClinic,"address",e.target.value)}
-                    placeholder="e.g. 24 Block A, Johar Town, Lahore"
+                  <input value={clinics[activeClinic].address||""} onChange={e=>updateClinicField(activeClinic,"address",e.target.value)} placeholder="e.g. 24 Block A, Johar Town, Lahore"
                     style={{padding:"10px 14px",borderRadius:9,border:`1.5px solid ${T.border}`,fontSize:14,color:T.text,width:"100%",outline:"none",fontFamily:"inherit"}}/>
                 </div>
               )}
-
-              {/* Fee */}
               <div style={{marginBottom:16}}>
                 <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Consultation Fee (PKR)</label>
                 <input type="number" value={clinics[activeClinic].fee||""} onChange={e=>updateClinicField(activeClinic,"fee",parseInt(e.target.value)||0)}
                   style={{padding:"10px 14px",borderRadius:9,border:`1.5px solid ${T.border}`,fontSize:14,color:T.text,width:200,outline:"none"}}/>
               </div>
-
-              {/* Times */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
                 <div>
                   <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Start Time</label>
@@ -318,49 +270,31 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                   </select>
                 </div>
               </div>
-
-              {/* Days */}
               <div style={{marginBottom:16}}>
                 <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10}}>Available Days</label>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  {ALL_DAYS.map(day=>{
-                    const active=clinics[activeClinic].days?.includes(day);
+                  {ALL_DAYS.map(day=>{ const active=clinics[activeClinic].days?.includes(day);
                     return <button key={day} onClick={()=>toggleDay(activeClinic,day)}
                       style={{padding:"8px 16px",borderRadius:20,fontWeight:700,fontSize:13,cursor:"pointer",
-                        border:`2px solid ${active?T.primary:T.border}`,background:active?T.primary:T.white,color:active?"#fff":T.muted}}>{day}</button>;
-                  })}
+                        border:`2px solid ${active?T.primary:T.border}`,background:active?T.primary:T.white,color:active?"#fff":T.muted}}>{day}</button>; })}
                 </div>
               </div>
-
-              {/* Slots */}
               <div style={{marginBottom:20}}>
                 <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10}}>Time Slots</label>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))",gap:8}}>
-                  {ALL_SLOTS.map(slot=>{
-                    const active=clinics[activeClinic].slots?.includes(slot);
-                    const hour=parseInt(slot.split(":")[0]);
-                    const lbl=`${hour%12||12}:${slot.split(":")[1]} ${hour>=12?"PM":"AM"}`;
+                  {ALL_SLOTS.map(slot=>{ const active=clinics[activeClinic].slots?.includes(slot); const hour=parseInt(slot.split(":")[0]); const lbl=`${hour%12||12}:${slot.split(":")[1]} ${hour>=12?"PM":"AM"}`;
                     return <button key={slot} onClick={()=>toggleSlot(activeClinic,slot)}
                       style={{padding:"8px 6px",borderRadius:8,fontWeight:600,fontSize:12,cursor:"pointer",
-                        border:`2px solid ${active?T.primary:T.border}`,background:active?T.primaryLight:T.white,color:active?T.primary:T.muted}}>{lbl}</button>;
-                  })}
+                        border:`2px solid ${active?T.primary:T.border}`,background:active?T.primaryLight:T.white,color:active?T.primary:T.muted}}>{lbl}</button>; })}
                 </div>
               </div>
-
               <div style={{display:"flex",gap:10}}>
                 <button onClick={saveSchedule} disabled={saving}
-                  style={{flex:1,padding:"13px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
-                    color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:saving?"not-allowed":"pointer",opacity:saving?0.7:1}}>
+                  style={{flex:1,padding:"13px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:saving?"not-allowed":"pointer",opacity:saving?0.7:1}}>
                   {saving?"Saving...":"💾 Save Clinic Schedule"}
                 </button>
                 {clinics.length > 1 && (
-                  <button onClick={()=>{
-                    if(!window.confirm("Remove this clinic?")) return;
-                    const u=JSON.parse(JSON.stringify(clinics));
-                    u.splice(activeClinic,1);
-                    setClinics(u);
-                    setActiveClinic(Math.max(0,activeClinic-1));
-                  }}
+                  <button onClick={()=>{ if(!window.confirm("Remove this clinic?")) return; const u=JSON.parse(JSON.stringify(clinics)); u.splice(activeClinic,1); setClinics(u); setActiveClinic(Math.max(0,activeClinic-1)); }}
                     style={{padding:"13px 20px",background:"#fef2f2",color:"#EF4444",border:"1.5px solid #EF4444",borderRadius:10,fontWeight:700,fontSize:13,cursor:"pointer"}}>
                     🗑️ Remove
                   </button>
@@ -371,12 +305,9 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
         </div>
       )}
 
-      {/* PROFILE */}
       {activeTab === "profile" && (
         <Card style={{marginBottom:20}}>
           <h3 style={{margin:"0 0 20px",fontSize:15,fontWeight:700,color:T.text}}>👨 Profile & Services</h3>
-
-          {/* Photo Upload */}
           <div style={{marginBottom:24,padding:16,background:T.bg,borderRadius:12,border:`1.5px solid ${T.border}`}}>
             <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:12}}>Profile Photo</label>
             <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
@@ -384,17 +315,8 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                 ?<img src={photoPreview} alt="Profile" style={{width:80,height:80,borderRadius:"50%",objectFit:"cover",border:`3px solid ${T.primary}`}}/>
                 :<div style={{width:80,height:80,borderRadius:"50%",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:28}}>{doctor?.avatar||"DR"}</div>}
               <div>
-                <label htmlFor="photoUpload" style={{display:"inline-block",padding:"10px 20px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,color:"#fff",borderRadius:9,fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:8}}>
-                  📷 Upload Photo
-                </label>
-                <input id="photoUpload" type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
-                  const file = e.target.files[0];
-                  if (!file) return;
-                  if (file.size > 500000) { alert("Photo must be under 500KB!"); return; }
-                  const reader = new FileReader();
-                  reader.onload = (ev) => { setPhoto(ev.target.result); setPhotoPreview(ev.target.result); };
-                  reader.readAsDataURL(file);
-                }}/>
+                <label htmlFor="photoUpload" style={{display:"inline-block",padding:"10px 20px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,color:"#fff",borderRadius:9,fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:8}}>📷 Upload Photo</label>
+                <input id="photoUpload" type="file" accept="image/*" style={{display:"none"}} onChange={e=>{ const file=e.target.files[0]; if(!file) return; if(file.size>500000){alert("Photo must be under 500KB!");return;} const reader=new FileReader(); reader.onload=(ev)=>{setPhoto(ev.target.result);setPhotoPreview(ev.target.result);}; reader.readAsDataURL(file); }}/>
                 <div style={{fontSize:11,color:T.muted}}>Max 500KB · JPG or PNG</div>
                 {photoPreview && <button onClick={()=>{setPhoto("");setPhotoPreview("");}} style={{marginTop:6,padding:"4px 10px",background:"#fef2f2",color:"#EF4444",border:"1px solid #EF4444",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>Remove Photo</button>}
               </div>
@@ -407,14 +329,12 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
           </div>
           <div style={{marginBottom:20}}>
             <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Qualifications</label>
-            <textarea value={qualifications} onChange={e=>setQualifications(e.target.value)} rows={4}
-              placeholder="e.g. MBBS, FCPS (Medicine)"
+            <textarea value={qualifications} onChange={e=>setQualifications(e.target.value)} rows={4} placeholder="e.g. MBBS, FCPS (Medicine)"
               style={{padding:"10px 14px",borderRadius:9,border:`1.5px solid ${T.border}`,fontSize:14,color:T.text,width:"100%",outline:"none",fontFamily:"inherit",resize:"vertical"}}/>
           </div>
           <div style={{marginBottom:24}}>
             <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Services (one per line)</label>
-            <textarea value={services} onChange={e=>setServices(e.target.value)} rows={6}
-              placeholder="Diabetes Management&#10;Thyroid Disorders&#10;Blood Sugar Control"
+            <textarea value={services} onChange={e=>setServices(e.target.value)} rows={6} placeholder="Diabetes Management&#10;Thyroid Disorders&#10;Blood Sugar Control"
               style={{padding:"10px 14px",borderRadius:9,border:`1.5px solid ${T.border}`,fontSize:14,color:T.text,width:"100%",outline:"none",fontFamily:"inherit",resize:"vertical"}}/>
           </div>
           {(qualifications||services) && (
@@ -433,22 +353,19 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
             </div>
           )}
           <button onClick={saveProfile} disabled={saving}
-            style={{width:"100%",padding:"13px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,
-              color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:saving?"not-allowed":"pointer",opacity:saving?0.7:1}}>
+            style={{width:"100%",padding:"13px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:saving?"not-allowed":"pointer",opacity:saving?0.7:1}}>
             {saving?"Saving...":"💾 Save Profile & Services"}
           </button>
         </Card>
       )}
 
-      {/* HOLIDAYS */}
       {activeTab === "holidays" && (
         <Card>
           <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:T.text}}>🏖️ Mark Holidays / Days Off</h3>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:12,marginBottom:20,alignItems:"end"}}>
             <div>
               <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Date</label>
-              <input type="date" value={newHolidayDate} onChange={e=>setNewHolidayDate(e.target.value)}
-                min={new Date().toISOString().split("T")[0]}
+              <input type="date" value={newHolidayDate} onChange={e=>setNewHolidayDate(e.target.value)} min={new Date().toISOString().split("T")[0]}
                 style={{padding:"10px 14px",borderRadius:9,border:`1.5px solid ${T.border}`,fontSize:14,color:T.text,width:"100%",outline:"none"}}/>
             </div>
             <div>
@@ -472,9 +389,7 @@ function ManageSchedule({ doctor, onUpdate, showToast }) {
                       <div style={{fontSize:12,color:"#EF4444",fontWeight:600}}>{h.reason}</div>
                     </div>
                     <button onClick={()=>handleRemoveHoliday(h.date)}
-                      style={{padding:"5px 12px",background:"#fff",color:"#EF4444",border:"1.5px solid #EF4444",borderRadius:7,fontSize:12,fontWeight:700,cursor:"pointer"}}>
-                      Remove
-                    </button>
+                      style={{padding:"5px 12px",background:"#fff",color:"#EF4444",border:"1.5px solid #EF4444",borderRadius:7,fontSize:12,fontWeight:700,cursor:"pointer"}}>Remove</button>
                   </div>
                 ))}
               </div>
@@ -524,7 +439,6 @@ export default function DoctorDashboard() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Auto-switch new doctors to manage schedule
   useEffect(() => {
     if (doctor !== null && (!doctor.clinics || doctor.clinics.length === 0)) {
       setView("manage");
@@ -553,10 +467,20 @@ export default function DoctorDashboard() {
   const reportAppts = appointments.filter(a=>a.date===reportDate);
   const getP = (a) => a.patientName||a.patientEmail?.split("@")[0]||"Unknown";
 
+  // Build patient list for prescription portal from today's appointments
+  const todayPatients = todayAppts.map(a => ({
+    id: a.id,
+    name: a.patientName || a.patientEmail?.split("@")[0] || "Unknown",
+    age: a.patientAge || "—",
+    gender: a.patientGender || "—",
+    phone: a.patientPhone || a.patientEmail || "—",
+  }));
+
   const nav = [
     ["dashboard","📊","Dashboard"],
     ["schedule","📅","Schedule"],
     ["patients","👥","Appointments"],
+    ["prescriptions","💊","Prescriptions"],
     ["report","📄","Daily Report"],
     ["manage","⚙️","Manage Schedule"],
     ["stats","📈","Analytics"],
@@ -572,7 +496,7 @@ export default function DoctorDashboard() {
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg,fontFamily:"Inter,system-ui,sans-serif"}}>
       <div style={{textAlign:"center",maxWidth:400,padding:40}}>
         <div style={{fontSize:64,marginBottom:16}}>👨‍⚕️</div>
-        <h2 style={{fontSize:22,fontWeight:800,color:T.text,marginBottom:12}}>Welcome, Dr. {(()=>{ const parts=(doctor?.name||profile?.name||"").split(" "); const skip=["dr.","rd.","prof.","mr.","ms.","mrs."]; return parts.find(p=>!skip.includes(p.toLowerCase()))||parts[0]; })()}</h2>
+        <h2 style={{fontSize:22,fontWeight:800,color:T.text,marginBottom:12}}>Welcome, Dr. {getFirstName(profile?.name)}!</h2>
         <p style={{color:T.muted,fontSize:14,marginBottom:24}}>Your profile is being set up. Please refresh in a moment.</p>
         <div style={{display:"flex",gap:10,justifyContent:"center"}}>
           <button onClick={loadData} style={{padding:"12px 24px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>🔄 Refresh</button>
@@ -585,10 +509,8 @@ export default function DoctorDashboard() {
   return (
     <div style={{display:"flex",minHeight:"100vh",fontFamily:"Inter,system-ui,sans-serif",background:T.bg}}>
 
-      {/* Mobile overlay */}
       {sidebarOpen && window.innerWidth <= 768 && (
-        <div onClick={()=>setSidebarOpen(false)}
-          style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:9}}/>
+        <div onClick={()=>setSidebarOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:9}}/>
       )}
 
       {/* SIDEBAR */}
@@ -604,7 +526,8 @@ export default function DoctorDashboard() {
       }}>
         <div style={{padding:"18px 14px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:sidebarOpen?16:0}}>
-            {sidebarOpen?<img src="/logo.png" alt="AsaanDoc" style={{height:32,filter:"brightness(0) invert(1)"}} onError={e=>{e.target.style.display="none";}}/>
+            {sidebarOpen
+              ?<img src="/logo.png" alt="AsaanDoc" style={{height:32,filter:"brightness(0) invert(1)"}} onError={e=>{e.target.style.display="none";}}/>
               :<span style={{fontSize:24}}>🏥</span>}
             {sidebarOpen&&<div style={{color:"rgba(255,255,255,0.45)",fontSize:10}}>Doctor Portal</div>}
           </div>
@@ -614,12 +537,15 @@ export default function DoctorDashboard() {
                 ?<img src={doctor.photo} alt={doctor.name} style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",border:"2px solid rgba(255,255,255,0.3)",flexShrink:0}} onError={e=>{e.target.style.display="none";}}/>
                 :<div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:14,flexShrink:0}}>{doctor.avatar||"DR"}</div>}
               <div style={{minWidth:0}}>
-                <div style={{color:"#fff",fontWeight:700,fontSize:12,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Dr. {(doctor?.name||profile?.name||"").split(" ")[0]}</div>
+                <div style={{color:"#fff",fontWeight:700,fontSize:12,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                  Dr. {getFirstName(doctor?.name||profile?.name)}
+                </div>
                 <div style={{color:"rgba(255,255,255,0.5)",fontSize:10}}>{doctor.specialty}</div>
               </div>
             </div>
           )}
         </div>
+
         <div style={{padding:"10px 8px",flex:1}}>
           {nav.map(([v,icon,label])=>(
             <button key={v} onClick={()=>{ setView(v); if(window.innerWidth<=768) setSidebarOpen(false); }}
@@ -631,6 +557,7 @@ export default function DoctorDashboard() {
             </button>
           ))}
         </div>
+
         <div style={{padding:"10px 8px 16px",borderTop:"1px solid rgba(255,255,255,0.08)"}}>
           {sidebarOpen&&doctor?.clinics?.length>0&&(
             <div style={{padding:"10px 12px",background:"rgba(255,255,255,0.07)",borderRadius:10,marginBottom:8}}>
@@ -646,36 +573,35 @@ export default function DoctorDashboard() {
             <span>🚪</span>{sidebarOpen&&"Sign Out"}
           </button>
         </div>
+
         <button onClick={()=>setSidebarOpen(o=>!o)}
           style={{position:"absolute",top:18,right:-12,width:24,height:24,borderRadius:"50%",
             background:T.primary,border:`2px solid ${T.primaryDark}`,color:"#fff",fontSize:12,
-            cursor:"pointer",display: window.innerWidth<=768?"none":"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>
+            cursor:"pointer",display:window.innerWidth<=768?"none":"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>
           {sidebarOpen?"‹":"›"}
         </button>
       </div>
 
-      {/* MAIN */}
+      {/* MAIN CONTENT */}
       <div style={{flex:1,overflow:"auto"}}>
         <div style={{background:T.white,padding:"14px 24px",borderBottom:`1px solid ${T.border}`,
           display:"flex",alignItems:"center",justifyContent:"space-between",
           boxShadow:"0 2px 8px rgba(0,0,0,0.04)",position:"sticky",top:0,zIndex:9}}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          {/* Hamburger for mobile */}
-          <button onClick={()=>setSidebarOpen(o=>!o)}
-            style={{display: window.innerWidth<=768?"flex":"none", alignItems:"center",justifyContent:"center",
-              width:38,height:38,borderRadius:10,border:`1.5px solid ${T.border}`,
-              background:T.white,cursor:"pointer",fontSize:18,color:T.text}}>
-            ☰
-          </button>
-          <div>
-            <div style={{fontWeight:800,fontSize:18,color:T.text}}>
-              {view==="dashboard"&&"Dashboard"}{view==="schedule"&&"My Schedule"}
-              {view==="patients"&&"All Appointments"}{view==="report"&&"Daily Report"}
-              {view==="manage"&&"Manage Schedule"}{view==="stats"&&"Analytics"}
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <button onClick={()=>setSidebarOpen(o=>!o)}
+              style={{display:window.innerWidth<=768?"flex":"none",alignItems:"center",justifyContent:"center",
+                width:38,height:38,borderRadius:10,border:`1.5px solid ${T.border}`,background:T.white,cursor:"pointer",fontSize:18,color:T.text}}>
+              ☰
+            </button>
+            <div>
+              <div style={{fontWeight:800,fontSize:18,color:T.text}}>
+                {view==="dashboard"&&"Dashboard"}{view==="schedule"&&"My Schedule"}
+                {view==="patients"&&"All Appointments"}{view==="prescriptions"&&"Prescriptions"}
+                {view==="report"&&"Daily Report"}{view==="manage"&&"Manage Schedule"}{view==="stats"&&"Analytics"}
+              </div>
+              <div style={{fontSize:12,color:T.muted}}>{new Date().toLocaleDateString("en-PK",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</div>
             </div>
-            <div style={{fontSize:12,color:T.muted}}>{new Date().toLocaleDateString("en-PK",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</div>
           </div>
-        </div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             {pending.length>0&&<div style={{padding:"5px 12px",background:"#fffbeb",color:"#F59E0B",borderRadius:20,fontSize:12,fontWeight:700,border:"1.5px solid #F59E0B"}}>🔔 {pending.length} Pending</div>}
             <button onClick={loadData} style={{padding:"7px 14px",background:T.primaryLight,color:T.primary,border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"}}>🔄 Refresh</button>
@@ -684,22 +610,21 @@ export default function DoctorDashboard() {
 
         <div style={{padding:"24px"}}>
 
-          {/* DASHBOARD */}
+          {/* ── DASHBOARD ── */}
           {view==="dashboard"&&(
             <div>
               <div style={{marginBottom:22}}>
                 <h2 style={{margin:"0 0 4px",fontSize:20,fontWeight:800,color:T.text}}>
-                  Good {new Date().getHours()<12?"Morning":new Date().getHours()<17?"Afternoon":"Evening"}, Dr. {(()=>{ const parts=(doctor?.name||profile?.name||"Doctor").split(" "); const skip=["dr.","rd.","prof.","mr.","ms.","mrs."]; return parts.find(p=>!skip.includes(p.toLowerCase()))||parts[0]; })()} 👋
+                  Good {new Date().getHours()<12?"Morning":new Date().getHours()<17?"Afternoon":"Evening"}, Dr. {getFirstName(doctor?.name||profile?.name)} 👋
                 </h2>
                 <p style={{margin:0,color:T.muted,fontSize:13}}>Here's your appointments overview.</p>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,marginBottom:16}}>
-                <StatCard label="Today"    value={todayAppts.length} icon="📅" color={T.primary} sub="appointments"/>
-                <StatCard label="Upcoming" value={upcoming.length}   icon="⏳" color={T.accent}  sub="confirmed"/>
-                <StatCard label="Pending"  value={pending.length}    icon="🔔" color={T.warn}    sub="need action"/>
-                <StatCard label="Completed" value={completed.length} icon="✅" color="#8B5CF6"   sub="all time"/>
+                <StatCard label="Today"     value={todayAppts.length} icon="📅" color={T.primary} sub="appointments"/>
+                <StatCard label="Upcoming"  value={upcoming.length}   icon="⏳" color={T.accent}  sub="confirmed"/>
+                <StatCard label="Pending"   value={pending.length}    icon="🔔" color={T.warn}    sub="need action"/>
+                <StatCard label="Completed" value={completed.length}  icon="✅" color="#8B5CF6"   sub="all time"/>
               </div>
-              {/* Fee banners */}
               <div style={{display:"flex",justifyContent:"flex-end",gap:12,marginBottom:24}}>
                 {[
                   ["Today's Total Fees","linear-gradient(135deg,#16a34a,#15803d)",todayAppts.reduce((s,a)=>s+Number(a.clinicFee||0),0),todayAppts.length+" appointment"+(todayAppts.length!==1?"s":"")],
@@ -712,6 +637,14 @@ export default function DoctorDashboard() {
                     <div style={{fontSize:11,opacity:0.75,marginTop:4}}>{sub}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* Quick Prescription button on dashboard */}
+              <div style={{marginBottom:20}}>
+                <button onClick={()=>setView("prescriptions")}
+                  style={{padding:"12px 24px",background:`linear-gradient(135deg,#2ABFBF,#1a9999)`,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8}}>
+                  💊 Write Prescription
+                </button>
               </div>
 
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
@@ -799,7 +732,7 @@ export default function DoctorDashboard() {
             </div>
           )}
 
-          {/* SCHEDULE */}
+          {/* ── SCHEDULE ── */}
           {view==="schedule"&&(
             <div>
               <h2 style={{margin:"0 0 18px",fontSize:18,fontWeight:800,color:T.text}}>Weekly Schedule</h2>
@@ -859,7 +792,7 @@ export default function DoctorDashboard() {
             </div>
           )}
 
-          {/* ALL APPOINTMENTS */}
+          {/* ── ALL APPOINTMENTS ── */}
           {view==="patients"&&(
             <div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:12}}>
@@ -922,7 +855,33 @@ export default function DoctorDashboard() {
             </div>
           )}
 
-          {/* DAILY REPORT */}
+          {/* ── PRESCRIPTIONS ── */}
+          {view==="prescriptions"&&(
+            <PrescriptionPortal
+              doctor={{
+                name: doctor?.name || profile?.name || "Doctor",
+                specialty: doctor?.specialty || "",
+                qualification: doctor?.qualifications || "",
+                license: doctor?.license || doctor?.pmcNo || "—",
+                hospital: doctor?.clinics?.[0]?.name || "AsaanDoc",
+                address: doctor?.clinics?.[0]?.address || "",
+                phone: doctor?.phone || "",
+              }}
+              patients={todayPatients.length > 0 ? todayPatients : [
+                // fallback: show all appointment patients if no today's appts
+                ...new Map(appointments.map(a => [a.patientEmail, {
+                  id: a.id,
+                  name: a.patientName || a.patientEmail?.split("@")[0] || "Unknown",
+                  age: a.patientAge || "—",
+                  gender: a.patientGender || "—",
+                  phone: a.patientPhone || a.patientEmail || "—",
+                }])).values()
+              ].slice(0, 10)}
+              doctorId={user?.uid}
+            />
+          )}
+
+          {/* ── DAILY REPORT ── */}
           {view==="report"&&(
             <div>
               <h2 style={{margin:"0 0 20px",fontSize:18,fontWeight:800,color:T.text}}>📄 Daily Report</h2>
@@ -943,7 +902,7 @@ export default function DoctorDashboard() {
               {reportAppts.length>0&&(
                 <>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12,marginBottom:20}}>
-                    <StatCard label="Total" value={reportAppts.length} icon="📋" color={T.primary}/>
+                    <StatCard label="Total"     value={reportAppts.length} icon="📋" color={T.primary}/>
                     <StatCard label="Completed" value={reportAppts.filter(a=>a.status==="completed").length} icon="✅" color={T.accent}/>
                     <StatCard label="Confirmed" value={reportAppts.filter(a=>a.status==="confirmed").length} icon="📅" color="#8B5CF6"/>
                     <StatCard label="Total Fees" value={`PKR ${reportAppts.reduce((s,a)=>s+Number(a.clinicFee||0),0).toLocaleString()}`} icon="💰" color="#16a34a"/>
@@ -983,10 +942,10 @@ export default function DoctorDashboard() {
             </div>
           )}
 
-          {/* MANAGE SCHEDULE */}
+          {/* ── MANAGE SCHEDULE ── */}
           {view==="manage"&&<ManageSchedule doctor={doctor} onUpdate={loadData} showToast={showToast}/>}
 
-          {/* ANALYTICS */}
+          {/* ── ANALYTICS ── */}
           {view==="stats"&&(
             <div>
               <h2 style={{margin:"0 0 18px",fontSize:18,fontWeight:800,color:T.text}}>Analytics Overview</h2>
@@ -1038,7 +997,7 @@ export default function DoctorDashboard() {
                     ?<img src={doctor.photo} alt={doctor.name} style={{width:70,height:70,borderRadius:"50%",objectFit:"cover",border:`3px solid ${T.primary}`,flexShrink:0}} onError={e=>{e.target.style.display="none";}}/>
                     :<div style={{width:70,height:70,borderRadius:"50%",background:doctor.color||T.primary,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:24,flexShrink:0}}>{doctor.avatar||"DR"}</div>}
                   <div style={{flex:1}}>
-                    <div style={{fontWeight:800,fontSize:17,color:T.text}}>{profile?.name||doctor.name}</div>
+                    <div style={{fontWeight:800,fontSize:17,color:T.text}}>{doctor.name}</div>
                     <div style={{fontSize:14,color:T.primary,fontWeight:600}}>{doctor.specialty}</div>
                     <div style={{fontSize:13,color:T.muted,marginTop:4}}>⏳ {doctor.exp} years experience</div>
                     {doctor.clinics&&Array.isArray(doctor.clinics)&&<div style={{marginTop:10}}>
