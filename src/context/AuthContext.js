@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
         setUser(firebaseUser);
 
         try {
-          const skip = ["dr.", "rd.", "prof.", "mr.", "ms.", "mrs."];
+         
 
           // Step 1: Check doctors collection
           const doctorSnap = await getDoc(doc(db, "doctors", firebaseUser.uid));
