@@ -1,5 +1,4 @@
 // src/context/AuthContext.js
-// FIX: Wait for profile before rendering, and check 'doctors' collection for role
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../firebase/config";
@@ -10,7 +9,13 @@ export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null);
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(() => {
+    // Load cached profile instantly on page load — prevents flash to wrong portal
+    try {
+      const cached = localStorage.getItem("asaandoc_profile");
+      return cached ? JSON.parse(cached) : null;
+    } catch { return null; }
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,43 +24,60 @@ export function AuthProvider({ children }) {
         setUser(firebaseUser);
 
         try {
-          // Step 1: Check if this user is a doctor
+          const skip = ["dr.", "rd.", "prof.", "mr.", "ms.", "mrs."];
+
+          // Step 1: Check doctors collection
           const doctorSnap = await getDoc(doc(db, "doctors", firebaseUser.uid));
 
           if (doctorSnap.exists()) {
-            // ✅ Found in doctors collection → role = doctor
-            setProfile({ ...doctorSnap.data(), role: "doctor" });
+            const data = doctorSnap.data();
+            const resolved = { ...data, role: "doctor" };
+            setProfile(resolved);
+            // Cache so next refresh is instant
+            localStorage.setItem("asaandoc_profile", JSON.stringify(resolved));
           } else {
             // Step 2: Check patients collection
             const patientSnap = await getDoc(doc(db, "patients", firebaseUser.uid));
 
             if (patientSnap.exists()) {
-              setProfile({ ...patientSnap.data(), role: "patient" });
+              const data = patientSnap.data();
+              const resolved = { ...data, role: "patient" };
+              setProfile(resolved);
+              localStorage.setItem("asaandoc_profile", JSON.stringify(resolved));
             } else {
-              // Step 3: Fallback to users collection (old records)
+              // Step 3: Fallback to users collection
               const userSnap = await getDoc(doc(db, "users", firebaseUser.uid));
               if (userSnap.exists()) {
-                setProfile(userSnap.data()); // uses whatever role is stored
+                const data = userSnap.data();
+                setProfile(data);
+                localStorage.setItem("asaandoc_profile", JSON.stringify(data));
               } else {
-                setProfile({ role: "patient" }); // default to patient
+                const fallback = { role: "patient" };
+                setProfile(fallback);
+                localStorage.setItem("asaandoc_profile", JSON.stringify(fallback));
               }
             }
           }
         } catch (e) {
           console.error("Profile load error:", e);
-          setProfile({ role: "patient" }); // safe fallback
+          // Keep cached profile if available, don't wipe it on error
+          const cached = localStorage.getItem("asaandoc_profile");
+          if (!cached) {
+            setProfile({ role: "patient" });
+          }
         } finally {
-          setLoading(false); // ✅ Only stop loading AFTER profile is resolved
+          setLoading(false);
         }
 
       } else {
+        // Logged out — clear everything
         setUser(null);
         setProfile(null);
+        localStorage.removeItem("asaandoc_profile");
         setLoading(false);
       }
     });
 
-    // Safety timeout — 10 seconds max
     const t = setTimeout(() => setLoading(false), 10000);
     return () => { unsub(); clearTimeout(t); };
   }, []);
