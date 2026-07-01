@@ -688,7 +688,7 @@ export default function DoctorDashboard() {
             <div>
               <div style={{marginBottom:22}}>
                 <h2 style={{margin:"0 0 4px",fontSize:20,fontWeight:800,color:T.text}}>
-                  Good {new Date().getHours()<12?"Morning":new Date().getHours()<17?"Afternoon":"Evening"}, {profile?.name?.split(" ")[1]||profile?.name||"Doctor"} 👋
+                  Good {new Date().getHours()<12?"Morning":new Date().getHours()<17?"Afternoon":"Evening"}, Dr. {(doctor?.name||profile?.name||"Doctor").split(" ")[0]} 👋
                 </h2>
                 <p style={{margin:0,color:T.muted,fontSize:13}}>Here's your appointments overview.</p>
               </div>
