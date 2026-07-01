@@ -268,9 +268,9 @@ export default function PrescriptionPortal({ doctor: propDoctor, patients: propP
 
   // Use real props — no mock fallbacks
   const doctor   = propDoctor   || { name:"", specialty:"", qualification:"", license:"", hospital:"AsaanDoc", address:"", phone:"" };
-  const patients = propPatients || [];
-  const doctorId = propDoctorId || "";
-
+const patients = propPatients || [];
+const doctorId = propDoctorId || "";
+  
   const [view,            setView]           = useState("list"); // list | form | preview | history
   const [selectedPatient, setSelectedPatient]= useState(null);
   const [medicines,       setMedicines]      = useState([emptyMed()]);
