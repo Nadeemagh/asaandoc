@@ -18,7 +18,7 @@
 import { useState, useRef } from "react";
 import {
   collection, addDoc, getDocs, query,
-  where, orderBy, serverTimestamp,
+  where, orderBy, serverTimestamp, doc, getDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/config"; // ← your existing firebase config
 
@@ -268,9 +268,9 @@ export default function PrescriptionPortal({ doctor: propDoctor, patients: propP
 
   // Use real props — no mock fallbacks
   const doctor   = propDoctor   || { name:"", specialty:"", qualification:"", license:"", hospital:"AsaanDoc", address:"", phone:"" };
-const patients = propPatients || [];
-const doctorId = propDoctorId || "";
-  
+  const patients = propPatients || [];
+  const doctorId = propDoctorId || "";
+
   const [view,            setView]           = useState("list"); // list | form | preview | history
   const [selectedPatient, setSelectedPatient]= useState(null);
   const [medicines,       setMedicines]      = useState([emptyMed()]);
@@ -296,6 +296,17 @@ const doctorId = propDoctorId || "";
   const addLab    = () => setLabTests(p=>[...p, emptyLab()]);
   const updateLab = (id,u) => setLabTests(p=>p.map(t=>t.id===id?u:t));
   const removeLab = id => setLabTests(p=>p.filter(t=>t.id!==id));
+
+  // Walk-in patient modal state
+  const [showWalkIn, setShowWalkIn] = useState(false);
+  const [walkIn, setWalkIn] = useState({ name:"", age:"", gender:"Male", phone:"" });
+
+  const openWalkInForm = () => {
+    if (!walkIn.name.trim()) { showToast("⚠️ Enter patient name"); return; }
+    openForm({ id:"walkin-"+Date.now(), ...walkIn });
+    setShowWalkIn(false);
+    setWalkIn({ name:"", age:"", gender:"Male", phone:"" });
+  };
 
   const openForm = (patient) => {
     setSelectedPatient(patient);
@@ -406,10 +417,20 @@ const doctorId = propDoctorId || "";
 
         {/* Patient list */}
         <div style={{ background:C.white, borderRadius:12, border:`1px solid ${C.gray200}`, overflow:"hidden" }}>
-          <div style={{ padding:"20px 24px", borderBottom:`1px solid ${C.gray200}` }}>
-            <div style={{ fontSize:16, fontWeight:700, color:C.navy }}>Today's Patients</div>
-            <div style={{ fontSize:13, color:C.gray600, marginTop:2 }}>Click "Write Prescription" to start</div>
+          <div style={{ padding:"20px 24px", borderBottom:`1px solid ${C.gray200}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div>
+              <div style={{ fontSize:16, fontWeight:700, color:C.navy }}>Today's Patients</div>
+              <div style={{ fontSize:13, color:C.gray600, marginTop:2 }}>Appointment patients + walk-in patients</div>
+            </div>
+            <Btn onClick={()=>setShowWalkIn(true)} variant="primary" small>🚶 Walk-in Patient</Btn>
           </div>
+          {patients.length === 0 && (
+            <div style={{ padding:"32px 24px", textAlign:"center", color:C.gray400 }}>
+              <div style={{ fontSize:36, marginBottom:8 }}>📋</div>
+              <div style={{ fontSize:14, fontWeight:600 }}>No appointments today</div>
+              <div style={{ fontSize:13, marginTop:4 }}>Use "Walk-in Patient" to write a prescription</div>
+            </div>
+          )}
           {patients.map((p,i)=>(
             <div key={p.id} style={{ padding:"18px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:i<patients.length-1?`1px solid ${C.gray100}`:"none" }}
               onMouseEnter={e=>e.currentTarget.style.background=C.gray50}
@@ -431,6 +452,58 @@ const doctorId = propDoctorId || "";
           ))}
         </div>
       </div>
+
+      {/* Walk-in Patient Modal */}
+      {showWalkIn && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+          <div style={{ background:C.white, borderRadius:16, padding:32, width:"100%", maxWidth:440, boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+              <div>
+                <div style={{ fontSize:18, fontWeight:800, color:C.navy }}>🚶 Walk-in Patient</div>
+                <div style={{ fontSize:13, color:C.gray600, marginTop:2 }}>Enter patient details to write prescription</div>
+              </div>
+              <button onClick={()=>setShowWalkIn(false)} style={{ background:"none", border:"none", fontSize:24, cursor:"pointer", color:C.gray400 }}>×</button>
+            </div>
+
+            <div style={{ marginBottom:14 }}>
+              <label style={{ display:"block", fontSize:12, fontWeight:600, color:C.gray600, marginBottom:4, textTransform:"uppercase", letterSpacing:"0.05em" }}>Patient Name *</label>
+              <input value={walkIn.name} onChange={e=>setWalkIn(w=>({...w,name:e.target.value}))} placeholder="e.g. Muhammad Usman"
+                style={{ width:"100%", boxSizing:"border-box", padding:"10px 12px", border:`1.5px solid ${C.gray200}`, borderRadius:8, fontSize:14, fontFamily:"inherit", outline:"none" }}
+                onFocus={e=>e.target.style.borderColor=C.teal} onBlur={e=>e.target.style.borderColor=C.gray200} />
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 }}>
+              <div>
+                <label style={{ display:"block", fontSize:12, fontWeight:600, color:C.gray600, marginBottom:4, textTransform:"uppercase", letterSpacing:"0.05em" }}>Age</label>
+                <input type="number" value={walkIn.age} onChange={e=>setWalkIn(w=>({...w,age:e.target.value}))} placeholder="e.g. 35"
+                  style={{ width:"100%", boxSizing:"border-box", padding:"10px 12px", border:`1.5px solid ${C.gray200}`, borderRadius:8, fontSize:14, fontFamily:"inherit", outline:"none" }}
+                  onFocus={e=>e.target.style.borderColor=C.teal} onBlur={e=>e.target.style.borderColor=C.gray200} />
+              </div>
+              <div>
+                <label style={{ display:"block", fontSize:12, fontWeight:600, color:C.gray600, marginBottom:4, textTransform:"uppercase", letterSpacing:"0.05em" }}>Gender</label>
+                <select value={walkIn.gender} onChange={e=>setWalkIn(w=>({...w,gender:e.target.value}))}
+                  style={{ width:"100%", padding:"10px 12px", border:`1.5px solid ${C.gray200}`, borderRadius:8, fontSize:14, fontFamily:"inherit", outline:"none", background:C.white }}>
+                  <option>Male</option>
+                  <option>Female</option>
+                  <option>Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ marginBottom:24 }}>
+              <label style={{ display:"block", fontSize:12, fontWeight:600, color:C.gray600, marginBottom:4, textTransform:"uppercase", letterSpacing:"0.05em" }}>Phone</label>
+              <input value={walkIn.phone} onChange={e=>setWalkIn(w=>({...w,phone:e.target.value}))} placeholder="e.g. +92 300 1234567"
+                style={{ width:"100%", boxSizing:"border-box", padding:"10px 12px", border:`1.5px solid ${C.gray200}`, borderRadius:8, fontSize:14, fontFamily:"inherit", outline:"none" }}
+                onFocus={e=>e.target.style.borderColor=C.teal} onBlur={e=>e.target.style.borderColor=C.gray200} />
+            </div>
+
+            <div style={{ display:"flex", gap:10 }}>
+              <Btn onClick={()=>setShowWalkIn(false)} variant="ghost" style={{ flex:1 }}>Cancel</Btn>
+              <Btn onClick={openWalkInForm} variant="primary" style={{ flex:1 }}>📋 Write Prescription</Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
