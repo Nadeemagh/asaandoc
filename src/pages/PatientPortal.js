@@ -66,8 +66,8 @@ function PrescriptionCard({ rx, onView }) {
       <div style={{ padding:"14px 20px", borderBottom:`1px solid ${T.border}`, display:"flex", alignItems:"center", gap:12 }}>
         <div style={{ width:38, height:38, borderRadius:"50%", background:T.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>👨‍⚕️</div>
         <div>
-          <div style={{ fontWeight:600, color:T.text, fontSize:14 }}>{rx.doctorName || "Your Doctor"}</div>
-          <div style={{ fontSize:12, color:T.muted }}>{rx.doctorSpecialty || "AsaanDoc"}</div>
+          <div style={{ fontWeight:600, color:T.text, fontSize:14 }}>{rx.doctorName || rx.doctor?.name || "Doctor"}</div>
+          <div style={{ fontSize:12, color:T.muted }}>{rx.doctorSpecialty || rx.doctor?.specialty || "AsaanDoc"}</div>
         </div>
       </div>
       <div style={{ padding:"14px 20px" }}>
@@ -144,8 +144,8 @@ function PrescriptionDetail({ rx, onClose }) {
               </div>
             </div>
             <div style={{ marginTop:14, paddingTop:12, borderTop:"1px solid rgba(255,255,255,0.15)", fontSize:12, color:"rgba(255,255,255,0.75)", lineHeight:1.7 }}>
-              <strong style={{color:"#fff"}}>{rx.doctorName||"Your Doctor"}</strong>
-              {rx.doctorSpecialty && <> · {rx.doctorSpecialty}</>}
+              <strong style={{color:"#fff"}}>{rx.doctorName||rx.doctor?.name||"Doctor"}</strong>
+              {(rx.doctorSpecialty||rx.doctor?.specialty) && <> · {rx.doctorSpecialty||rx.doctor?.specialty}</>}
             </div>
           </div>
           {/* Patient info */}
@@ -250,26 +250,31 @@ function MyPrescriptions({ user, profile }) {
   useEffect(() => {
     (async () => {
       try {
-        // Search by patient phone or email
-        const phone = profile?.phone || "";
+        const phone = profile?.phone ? "+92" + profile.phone : "";
+        const phone2 = profile?.phone || "";
         const email = user?.email || "";
         let results = [];
+        const ids = new Set();
 
-        // Query by phone if available
+        // Query by phone with +92 prefix
         if (phone) {
           const q1 = query(collection(db,"prescriptions"), where("phone","==",phone));
           const snap1 = await getDocs(q1);
-          results = [...snap1.docs.map(d=>({firestoreId:d.id,...d.data()}))];
+          snap1.docs.forEach(d=>{ if(!ids.has(d.id)){ ids.add(d.id); results.push({firestoreId:d.id,...d.data()}); }});
         }
 
-        // Also query by email in case phone not matched
-        if (email) {
-          const q2 = query(collection(db,"prescriptions"), where("phone","==",email));
+        // Query by phone without prefix
+        if (phone2) {
+          const q2 = query(collection(db,"prescriptions"), where("phone","==",phone2));
           const snap2 = await getDocs(q2);
-          const emailResults = snap2.docs.map(d=>({firestoreId:d.id,...d.data()}));
-          // Merge, avoid duplicates
-          const ids = new Set(results.map(r=>r.firestoreId));
-          emailResults.forEach(r=>{ if(!ids.has(r.firestoreId)) results.push(r); });
+          snap2.docs.forEach(d=>{ if(!ids.has(d.id)){ ids.add(d.id); results.push({firestoreId:d.id,...d.data()}); }});
+        }
+
+        // Query by email
+        if (email) {
+          const q3 = query(collection(db,"prescriptions"), where("phone","==",email));
+          const snap3 = await getDocs(q3);
+          snap3.docs.forEach(d=>{ if(!ids.has(d.id)){ ids.add(d.id); results.push({firestoreId:d.id,...d.data()}); }});
         }
 
         // Sort newest first
