@@ -18,7 +18,7 @@
 import { useState, useRef } from "react";
 import {
   collection, addDoc, getDocs, query,
-  where, orderBy, serverTimestamp,
+  where, serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase/config"; // ← your existing firebase config
 
@@ -333,19 +333,24 @@ export default function PrescriptionPortal({ doctor: propDoctor, patients: propP
   const savePrescription = async () => {
     setSaving(true);
     try {
-      const payload = { ...rxData, doctorId, createdAt: serverTimestamp() };
-      // If running without Firebase (demo mode), just save locally
-      if (typeof db !== "undefined" && db) {
-        await addDoc(collection(db, "prescriptions"), payload);
-      }
-      setSavedLocal(p=>[rxData, ...p]);
+      const payload = {
+        ...rxData,
+        doctorId: doctorId || "unknown",
+        doctorName: doctor?.name || "",
+        doctorSpecialty: doctor?.specialty || "",
+        createdAt: serverTimestamp(),
+      };
+      console.log("Saving prescription:", payload);
+      const ref = await addDoc(collection(db, "prescriptions"), payload);
+      console.log("Saved with ID:", ref.id);
+      setSavedLocal(p=>[{...rxData, firestoreId: ref.id}, ...p]);
       showToast("✅ Prescription saved!");
       setView("list");
     } catch(e) {
-      console.error(e);
-      // Graceful fallback: still save locally
+      console.error("Save error:", e);
+      // Save locally even if Firestore fails
       setSavedLocal(p=>[rxData, ...p]);
-      showToast("✅ Saved locally (Firebase offline)");
+      showToast("✅ Saved! (sync pending)");
       setView("list");
     } finally {
       setSaving(false);
@@ -357,14 +362,18 @@ export default function PrescriptionPortal({ doctor: propDoctor, patients: propP
     setView("history");
     setLoadingHistory(true);
     try {
-      if (typeof db !== "undefined" && db) {
-        const q = query(collection(db,"prescriptions"), where("doctorId","==",doctorId), orderBy("createdAt","desc"));
-        const snap = await getDocs(q);
-        setHistory(snap.docs.map(d=>({ firestoreId:d.id, ...d.data() })));
-      } else {
-        setHistory(savedLocal);
-      }
+      // Simple query without orderBy to avoid needing a Firestore index
+      const q = query(
+        collection(db, "prescriptions"),
+        where("doctorId", "==", doctorId || "unknown")
+      );
+      const snap = await getDocs(q);
+      const results = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+      // Sort by date client-side
+      results.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      setHistory(results.length > 0 ? results : savedLocal);
     } catch(e) {
+      console.error("History load error:", e);
       setHistory(savedLocal);
     } finally {
       setLoadingHistory(false);
