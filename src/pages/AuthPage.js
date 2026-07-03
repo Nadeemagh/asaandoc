@@ -7,6 +7,7 @@ import { auth, db } from "../firebase/config";
 export default function AuthPage() {
   const [tab,      setTab]      = useState("signin");
   const [name,     setName]     = useState("");
+  const [phone,    setPhone]    = useState("");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
@@ -32,7 +33,7 @@ export default function AuthPage() {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(cred.user, { displayName: name });
       await setDoc(doc(db, "users", cred.user.uid), {
-        name, email, role: "patient", createdAt: serverTimestamp(),
+        name, email, phone, role: "patient", createdAt: serverTimestamp(),
       });
     } catch(err) {
       setError(friendlyError(err.code));
@@ -106,18 +107,18 @@ export default function AuthPage() {
             lineHeight: 1.15, margin: "0 0 16px",
             letterSpacing: "-0.5px",
           }}>
-            Pakistan's Most<br/>
-            <span style={{ color:"#2ABFBF" }}>Trusted</span> Health<br/>
-            Platform
+            1000+ Qualified &<br/>
+            <span style={{ color:"#2ABFBF" }}>Experienced</span><br/>
+            Doctors Connected
           </h1>
 
           <p style={{ fontSize:15, color:"rgba(255,255,255,0.6)", lineHeight:1.7, margin:"0 0 40px", maxWidth:340 }}>
-            Book appointments with top specialists, get digital prescriptions, and manage your health — all in one place.
+            Pakistan's trusted healthcare platform — connecting patients with verified specialists for appointments, digital prescriptions, and complete health management.
           </p>
 
           {/* Stats */}
           <div style={{ display:"flex", gap:32 }}>
-            {[["50+","Doctors"],["1000+","Patients"],["24/7","Support"]].map(([num,label])=>(
+            {[["1000+","Qualified Doctors"],["10,000+","Patients Served"],["24/7","Support"]].map(([num,label])=>(
               <div key={label}>
                 <div style={{ fontSize:22, fontWeight:800, color:"#2ABFBF" }}>{num}</div>
                 <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:2 }}>{label}</div>
@@ -206,6 +207,22 @@ export default function AuthPage() {
                   onFocus={e=>e.target.style.borderColor="#2ABFBF"}
                   onBlur={e=>e.target.style.borderColor="#e2e8f0"} />
               </div>
+            </div>
+          )}
+
+          {tab==="signup" && (
+            <div style={{ marginBottom:16 }}>
+              <label style={{ display:"block", fontSize:12, fontWeight:700, color:"#475569", marginBottom:6, textTransform:"uppercase", letterSpacing:"0.05em" }}>Mobile Number</label>
+              <div style={{ position:"relative", display:"flex", alignItems:"center" }}>
+                <div style={{ position:"absolute", left:14, fontSize:13, fontWeight:700, color:"#475569", pointerEvents:"none", zIndex:1 }}>+92</div>
+                <input type="tel" value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,"").slice(0,10))}
+                  placeholder="3001234567" maxLength={10}
+                  style={{ width:"100%", boxSizing:"border-box", padding:"13px 14px 13px 52px", border:"1.5px solid #e2e8f0", borderRadius:10, fontSize:14, fontFamily:"inherit", outline:"none", color:"#1e293b", transition:"border-color 0.15s" }}
+                  onFocus={e=>e.target.style.borderColor="#2ABFBF"}
+                  onBlur={e=>e.target.style.borderColor="#e2e8f0"} />
+                <span style={{ position:"absolute", right:14, fontSize:16, pointerEvents:"none" }}>📱</span>
+              </div>
+              <div style={{ fontSize:11, color:"#94a3b8", marginTop:4 }}>Used for WhatsApp appointment notifications</div>
             </div>
           )}
 
