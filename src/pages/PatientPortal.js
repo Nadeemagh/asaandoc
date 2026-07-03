@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
+import SymptomChecker from "../components/SymptomChecker";
 
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const today = new Date();
@@ -418,7 +419,7 @@ export default function PatientPortal() {
             <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11 }}>Patient Portal</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            {[["home","🏠","Home"],["browse","🔍","Doctors"],["myappts","📋","My Appointments"],["prescriptions","💊","My Prescriptions"],["profile","👤","My Profile"]].map(([v,icon,label])=>(
+            {[["home","🏠","Home"],["browse","🔍","Doctors"],["myappts","📋","My Appointments"],["prescriptions","💊","My Prescriptions"],["symptoms","🤖","Symptom Check"],["profile","👤","My Profile"]].map(([v,icon,label])=>(
               <button key={v} onClick={()=>setView(v)}
                 style={{ padding:"7px 12px", borderRadius:8, border:"none", cursor:"pointer", fontSize:13,
                   fontWeight:600, background:view===v?"rgba(255,255,255,0.2)":"transparent",
@@ -459,7 +460,7 @@ export default function PatientPortal() {
                   <StatCard label="Completed"      value={completed.length}     icon="✅" color="#8B5CF6"/>
                 </div>
                 {/* Quick prescription link */}
-                <div style={{ background:"#e8f9f9", border:"1.5px solid #2ABFBF", borderRadius:12, padding:"14px 20px", marginBottom:24, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div style={{ background:"#e8f9f9", border:"1.5px solid #2ABFBF", borderRadius:12, padding:"14px 20px", marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <div>
                     <div style={{ fontWeight:700, color:"#1B3A5C", fontSize:14 }}>💊 My Prescriptions</div>
                     <div style={{ fontSize:12, color:"#475569", marginTop:2 }}>View prescriptions from your doctors</div>
@@ -467,6 +468,22 @@ export default function PatientPortal() {
                   <button onClick={()=>setView("prescriptions")}
                     style={{ background:"#2ABFBF", color:"#fff", border:"none", borderRadius:8, padding:"8px 16px", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
                     View All
+                  </button>
+                </div>
+
+                {/* AI Symptom Checker Widget */}
+                <div style={{ background:"linear-gradient(135deg,#1B3A5C,#2d5a8e)", border:"none", borderRadius:14, padding:"18px 20px", marginBottom:24, display:"flex", justifyContent:"space-between", alignItems:"center", position:"relative", overflow:"hidden" }}>
+                  <div style={{ position:"absolute", right:-10, top:-10, fontSize:60, opacity:0.08 }}>🤖</div>
+                  <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                    <div style={{ width:44, height:44, borderRadius:12, background:"rgba(42,191,191,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, flexShrink:0 }}>🤖</div>
+                    <div>
+                      <div style={{ fontWeight:700, color:"#fff", fontSize:14 }}>AI Symptom Checker</div>
+                      <div style={{ fontSize:12, color:"rgba(255,255,255,0.6)", marginTop:2 }}>Describe symptoms → Get specialist recommendation instantly</div>
+                    </div>
+                  </div>
+                  <button onClick={()=>setView("symptoms")}
+                    style={{ background:"#2ABFBF", color:"#fff", border:"none", borderRadius:8, padding:"9px 18px", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
+                    Check Now →
                   </button>
                 </div>
                 <h3 style={{ margin:"0 0 14px", fontSize:15, fontWeight:700, color:T.text }}>Featured Specialists</h3>
@@ -841,6 +858,16 @@ export default function PatientPortal() {
             {/* MY PRESCRIPTIONS */}
             {view==="prescriptions"&&(
               <MyPrescriptions user={user} profile={profile}/>
+            )}
+
+            {/* AI SYMPTOM CHECKER */}
+            {view==="symptoms"&&(
+              <div style={{ maxWidth:720, margin:"0 auto" }}>
+                <SymptomChecker
+                  doctors={doctors}
+                  onBookDoctor={(doc)=>{ startBooking(doc); setView("book"); }}
+                />
+              </div>
             )}
           </>
         )}
