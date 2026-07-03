@@ -6,7 +6,7 @@ import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
-import PrescriptionPortal from "./PrescriptionPortal";
+import PrescriptionPortal from "../components/PrescriptionPortal";
 
 const today = new Date();
 const fmtDate = (d) => d.toISOString().split("T")[0];
