@@ -2,9 +2,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { T, Badge, Card, StatCard, Toast, Spinner } from "../components/UI";
 import { getAppointmentsByDoctor, updateAppointmentStatus, getDoctors, updateDoctorSchedule, updateDoctorProfile, addHoliday, removeHoliday } from "../firebase/services";
+import { doc, deleteDoc } from "firebase/firestore";
+import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
-import PrescriptionPortal from "../components/PrescriptionPortal";
+import PrescriptionPortal from "./PrescriptionPortal";
 
 const today = new Date();
 const fmtDate = (d) => d.toISOString().split("T")[0];
@@ -457,6 +459,18 @@ export default function DoctorDashboard() {
     } catch { showToast("Failed.","error"); }
   };
 
+  const handleDeleteAppointment = async (id, patientName) => {
+    if (!window.confirm(`⚠️ Delete this appointment from ${patientName}?\n\nThis will permanently remove it from the system. Use this only for fake or spam registrations.`)) return;
+    try {
+      await deleteDoc(doc(db, "appointments", id));
+      setAppointments(prev=>prev.filter(a=>a.id!==id));
+      showToast("🗑️ Appointment deleted.");
+    } catch(e) {
+      console.error(e);
+      showToast("Failed to delete.","error");
+    }
+  };
+
   const todayStr = fmtDate(today);
   const todayAppts = appointments.filter(a=>a.date===todayStr);
   const upcoming = appointments.filter(a=>a.date>todayStr&&a.status!=="cancelled");
@@ -708,6 +722,7 @@ export default function DoctorDashboard() {
                           <div style={{display:"flex",gap:6,marginTop:8}}>
                             <button onClick={()=>handleUpdateStatus(a.id,"confirmed",a)} style={{flex:1,padding:"7px",background:T.accent,color:"#fff",border:"none",borderRadius:7,fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Accept</button>
                             <button onClick={()=>handleUpdateStatus(a.id,"cancelled",a)} style={{flex:1,padding:"7px",background:"#fef2f2",color:"#EF4444",border:"1.5px solid #EF4444",borderRadius:7,fontSize:12,fontWeight:700,cursor:"pointer"}}>✗ Decline</button>
+                            <button onClick={()=>handleDeleteAppointment(a.id,getP(a))} style={{padding:"7px 10px",background:"#fef2f2",color:"#EF4444",border:"1.5px solid #fecaca",borderRadius:7,fontSize:12,fontWeight:700,cursor:"pointer"}} title="Delete fake registration">🗑️</button>
                           </div>
                         </div>
                       ))}
@@ -847,6 +862,11 @@ export default function DoctorDashboard() {
                           </>}
                           {a.status==="confirmed"&&<button onClick={()=>handleUpdateStatus(a.id,"completed",a)} style={{padding:"8px 16px",background:T.primaryLight,color:T.primary,border:`1.5px solid ${T.primary}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>✅ Mark Done</button>}
                           {a.status==="completed"&&<button onClick={()=>generateInvoicePDF(a,doctor)} style={{padding:"8px 14px",background:"#f0fdf4",color:"#16a34a",border:"1.5px solid #16a34a",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>🧾 Invoice</button>}
+                          <button onClick={()=>handleDeleteAppointment(a.id,getP(a))}
+                            style={{padding:"8px 12px",background:"#fef2f2",color:"#EF4444",border:"1.5px solid #fecaca",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer"}}
+                            title="Delete fake/spam registration">
+                            🗑️ Delete
+                          </button>
                         </div>
                       </div>
                     </Card>
@@ -859,15 +879,14 @@ export default function DoctorDashboard() {
           {view==="prescriptions"&&(
             <PrescriptionPortal
               doctor={{
-  name: doctor?.name || "Doctor",
-  specialty: doctor?.specialty || "",
-  qualification: doctor?.qualifications || "",
-  license: doctor?.license || doctor?.pmcNo || "—",
-  hospital: doctor?.clinics?.[0]?.name || "AsaanDoc",
-  address: doctor?.clinics?.[0]?.address || "",
-  phone: doctor?.phone || "",
-  photo: doctor?.photo || "",
-}}
+                name: doctor?.name || profile?.name || "Doctor",
+                specialty: doctor?.specialty || "",
+                qualification: doctor?.qualifications || "",
+                license: doctor?.license || doctor?.pmcNo || "—",
+                hospital: doctor?.clinics?.[0]?.name || "AsaanDoc",
+                address: doctor?.clinics?.[0]?.address || "",
+                phone: doctor?.phone || "",
+              }}
               patients={todayPatients.length > 0 ? todayPatients : [
                 // fallback: show all appointment patients if no today's appts
                 ...new Map(appointments.map(a => [a.patientEmail, {
