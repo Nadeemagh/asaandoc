@@ -9,68 +9,63 @@ export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null);
-  const [profile, setProfile] = useState(() => {
-    // Load cached profile instantly on page load — prevents flash to wrong portal
-    try {
-      const cached = localStorage.getItem("asaandoc_profile");
-      return cached ? JSON.parse(cached) : null;
-    } catch { return null; }
-  });
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true); // stays TRUE until role confirmed
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
 
+        // Check cached role first — for instant load
         try {
-         
+          const cached = localStorage.getItem("asaandoc_profile");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            // Only use cache if it's for the same user
+            if (parsed._uid === firebaseUser.uid) {
+              setProfile(parsed);
+              setLoading(false); // Show correct portal immediately from cache
+            }
+          }
+        } catch(e) {}
 
-          // Step 1: Check doctors collection
+        // Always verify with Firestore in background
+        try {
           const doctorSnap = await getDoc(doc(db, "doctors", firebaseUser.uid));
 
           if (doctorSnap.exists()) {
-            const data = doctorSnap.data();
-            const resolved = { ...data, role: "doctor" };
+            const resolved = { ...doctorSnap.data(), role: "doctor", _uid: firebaseUser.uid };
             setProfile(resolved);
-            // Cache so next refresh is instant
             localStorage.setItem("asaandoc_profile", JSON.stringify(resolved));
           } else {
-            // Step 2: Check patients collection
             const patientSnap = await getDoc(doc(db, "patients", firebaseUser.uid));
-
             if (patientSnap.exists()) {
-              const data = patientSnap.data();
-              const resolved = { ...data, role: "patient" };
+              const resolved = { ...patientSnap.data(), role: "patient", _uid: firebaseUser.uid };
               setProfile(resolved);
               localStorage.setItem("asaandoc_profile", JSON.stringify(resolved));
             } else {
-              // Step 3: Fallback to users collection
               const userSnap = await getDoc(doc(db, "users", firebaseUser.uid));
               if (userSnap.exists()) {
-                const data = userSnap.data();
-                setProfile(data);
-                localStorage.setItem("asaandoc_profile", JSON.stringify(data));
+                const resolved = { ...userSnap.data(), _uid: firebaseUser.uid };
+                setProfile(resolved);
+                localStorage.setItem("asaandoc_profile", JSON.stringify(resolved));
               } else {
-                const fallback = { role: "patient" };
+                const fallback = { role: "patient", _uid: firebaseUser.uid };
                 setProfile(fallback);
                 localStorage.setItem("asaandoc_profile", JSON.stringify(fallback));
               }
             }
           }
-        } catch (e) {
+        } catch(e) {
           console.error("Profile load error:", e);
-          // Keep cached profile if available, don't wipe it on error
-          const cached = localStorage.getItem("asaandoc_profile");
-          if (!cached) {
-            setProfile({ role: "patient" });
-          }
+          // Keep cached profile on error
         } finally {
-          setLoading(false);
+          setLoading(false); // Always stop loading after Firestore resolves
         }
 
       } else {
-        // Logged out — clear everything
+        // Logged out
         setUser(null);
         setProfile(null);
         localStorage.removeItem("asaandoc_profile");
@@ -78,13 +73,14 @@ export function AuthProvider({ children }) {
       }
     });
 
-    const t = setTimeout(() => setLoading(false), 10000);
+    // Safety timeout — 8 seconds max
+    const t = setTimeout(() => setLoading(false), 8000);
     return () => { unsub(); clearTimeout(t); };
   }, []);
 
   return (
     <AuthContext.Provider value={{ user, profile, loading }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
