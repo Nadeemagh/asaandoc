@@ -163,13 +163,36 @@ export default function AuthPage() {
           </div>
 
           {/* Stats */}
-          <div style={{ display:"flex", gap:10, marginBottom:28 }}>
-            {[["1000+","Qualified Doctors"],["10,000+","Patients Served"],["24/7","Support"]].map(([n,l])=>(
+          <div style={{ display:"flex", gap:10, marginBottom:16 }}>
+            {[["1000","Qualified Doctors"],["10,000","Patients Served"],["24/7","Support"]].map(([n,l])=>(
               <div key={l} className="stat-hover" style={{ flex:1, padding:"12px 8px", borderRadius:12, background:"rgba(42,191,191,0.08)", border:"1px solid rgba(42,191,191,0.2)", textAlign:"center", cursor:"default", transition:"all 0.2s" }}>
-                <div style={{ fontSize:17, fontWeight:900, color:"#2ABFBF" }}>{n}</div>
+                <div style={{ fontSize:17, fontWeight:900, color:"#2ABFBF", display:"flex", alignItems:"center", justifyContent:"center", gap:1 }}>
+                  {n}<span style={{ color:"#ef4444", fontWeight:900, fontSize:18, textShadow:"0 0 10px rgba(239,68,68,0.8), 0 0 20px rgba(239,68,68,0.4)", animation:"pulse 2s ease-in-out infinite" }}>+</span>
+                </div>
                 <div style={{ fontSize:9, color:"rgba(255,255,255,0.45)", marginTop:3, lineHeight:1.3 }}>{l}</div>
               </div>
             ))}
+          </div>
+
+          {/* 20% Lab Test Discount Banner */}
+          <div style={{
+            marginBottom:16, padding:"12px 16px", borderRadius:12,
+            background:"linear-gradient(135deg,rgba(239,68,68,0.15),rgba(239,68,68,0.08))",
+            border:"1.5px solid rgba(239,68,68,0.4)",
+            display:"flex", alignItems:"center", gap:12,
+            animation:"pulse 3s ease-in-out infinite",
+            boxShadow:"0 0 20px rgba(239,68,68,0.15)",
+          }}>
+            <div style={{ fontSize:28, flexShrink:0 }}>🔬</div>
+            <div>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <span style={{ fontSize:20, fontWeight:900, color:"#ef4444", textShadow:"0 0 12px rgba(239,68,68,0.7)" }}>20% OFF</span>
+                <span style={{ fontSize:11, fontWeight:700, color:"#fff", background:"rgba(239,68,68,0.3)", padding:"2px 8px", borderRadius:20 }}>LIMITED</span>
+              </div>
+              <div style={{ fontSize:11, color:"rgba(255,255,255,0.7)", marginTop:2 }}>
+                On all Lab Tests — Book through AsaanDoc & save!
+              </div>
+            </div>
           </div>
 
           {/* Features */}
@@ -186,7 +209,14 @@ export default function AuthPage() {
           </div>
         </div>
 
-        <div style={{ fontSize:10, color:"rgba(255,255,255,0.2)" }}>© 2025 AsaanDoc · asaandoc.com · Pakistan</div>
+        {/* Footer with website */}
+        <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+          <a href="https://www.asaandoc.com" target="_blank" rel="noreferrer"
+            style={{ fontSize:12, color:"#2ABFBF", fontWeight:700, textDecoration:"none", letterSpacing:"0.05em" }}>
+            🌐 www.asaandoc.com
+          </a>
+          <div style={{ fontSize:10, color:"rgba(255,255,255,0.2)" }}>© 2025 AsaanDoc · Pakistan's Health Platform</div>
+        </div>
       </div>
 
       {/* ── RIGHT PANEL ── */}
