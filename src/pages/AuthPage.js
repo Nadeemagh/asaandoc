@@ -167,7 +167,12 @@ export default function AuthPage() {
             {[["1000","Qualified Doctors"],["10,000","Patients Served"],["24/7","Support"]].map(([n,l])=>(
               <div key={l} className="stat-hover" style={{ flex:1, padding:"12px 8px", borderRadius:12, background:"rgba(42,191,191,0.08)", border:"1px solid rgba(42,191,191,0.2)", textAlign:"center", cursor:"default", transition:"all 0.2s" }}>
                 <div style={{ fontSize:17, fontWeight:900, color:"#2ABFBF", display:"flex", alignItems:"center", justifyContent:"center", gap:1 }}>
-                  {n}<span style={{ color:"#ef4444", fontWeight:900, fontSize:18, textShadow:"0 0 10px rgba(239,68,68,0.8), 0 0 20px rgba(239,68,68,0.4)", animation:"pulse 2s ease-in-out infinite" }}>+</span>
+                  {n}<span style={{
+                    fontWeight:900, fontSize:18,
+                    background:"linear-gradient(90deg, #2ABFBF 50%, #ef4444 50%)",
+                    WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
+                    backgroundClip:"text",
+                  }}>+</span>
                 </div>
                 <div style={{ fontSize:9, color:"rgba(255,255,255,0.45)", marginTop:3, lineHeight:1.3 }}>{l}</div>
               </div>
@@ -183,7 +188,7 @@ export default function AuthPage() {
             animation:"pulse 3s ease-in-out infinite",
             boxShadow:"0 0 20px rgba(239,68,68,0.15)",
           }}>
-            <div style={{ fontSize:28, flexShrink:0 }}>🔬</div>
+            <div style={{ fontSize:28, flexShrink:0 }}>🧪</div>
             <div>
               <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                 <span style={{ fontSize:20, fontWeight:900, color:"#ef4444", textShadow:"0 0 12px rgba(239,68,68,0.7)" }}>20% OFF</span>
