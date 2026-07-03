@@ -134,27 +134,56 @@ function RxPreview({ data, doctor }) {
       {/* Header */}
       <div style={{ background:`linear-gradient(135deg,${C.navy} 0%,${C.navyLight} 100%)`, padding:"24px 32px", color:C.white }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-          <div>
-            <div style={{ fontSize:26, fontWeight:800, letterSpacing:"-0.5px" }}>asaan<span style={{color:C.teal}}>doc</span></div>
-            <div style={{ fontSize:11, color:"rgba(255,255,255,0.6)", letterSpacing:"0.08em" }}>صحت کا آسان راستہ</div>
+          {/* Doctor photo/logo + name */}
+          <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+            {doctor.photo ? (
+              <img src={doctor.photo} alt={doctor.name}
+                style={{ width:72, height:72, borderRadius:"50%", objectFit:"cover",
+                  border:"3px solid rgba(255,255,255,0.3)", flexShrink:0 }}
+                onError={e=>{ e.target.style.display="none"; }} />
+            ) : (
+              <div style={{ width:72, height:72, borderRadius:"50%", background:"rgba(255,255,255,0.15)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:28, fontWeight:800, color:C.white, flexShrink:0, border:"3px solid rgba(255,255,255,0.2)" }}>
+                {(doctor.name||"D").split(" ").find(p=>!["dr.","rd.","prof."].includes(p.toLowerCase()))?.charAt(0)||"D"}
+              </div>
+            )}
+            <div>
+              <div style={{ fontSize:18, fontWeight:800 }}>{doctor.name}</div>
+              <div style={{ fontSize:13, color:C.teal, marginTop:2 }}>{doctor.specialty}</div>
+              <div style={{ fontSize:11, color:"rgba(255,255,255,0.6)", marginTop:1 }}>
+                {doctor.qualification}{doctor.license ? ` · PMC# ${doctor.license}` : ""}
+              </div>
+            </div>
           </div>
+          {/* Rx number + date + powered by */}
           <div style={{ textAlign:"right" }}>
             <div style={{ fontSize:11, color:"rgba(255,255,255,0.5)", marginBottom:2 }}>Prescription No.</div>
             <div style={{ fontSize:16, fontWeight:700, color:C.teal }}>{data.rxId}</div>
             <div style={{ fontSize:12, color:"rgba(255,255,255,0.6)", marginTop:4 }}>{data.date}</div>
+            <div style={{ marginTop:10, fontSize:10, color:"rgba(255,255,255,0.4)" }}>
+              Powered by asaan<span style={{color:C.teal}}>doc</span>
+            </div>
           </div>
         </div>
-        <div style={{ marginTop:20, paddingTop:16, borderTop:"1px solid rgba(255,255,255,0.15)", display:"flex", gap:32 }}>
-          <div>
-            <div style={{ fontSize:16, fontWeight:700 }}>{doctor.name}</div>
-            <div style={{ fontSize:12, color:C.teal, marginTop:2 }}>{doctor.specialty}</div>
-            <div style={{ fontSize:11, color:"rgba(255,255,255,0.6)", marginTop:1 }}>{doctor.qualification} · PMC# {doctor.license}</div>
-          </div>
-          <div style={{ fontSize:12, color:"rgba(255,255,255,0.65)", lineHeight:1.7 }}>
-            <div>{doctor.hospital}</div>
-            <div>{doctor.address}</div>
-            <div>{doctor.phone}</div>
-          </div>
+        {/* Clinic info */}
+        <div style={{ marginTop:16, paddingTop:14, borderTop:"1px solid rgba(255,255,255,0.15)",
+          display:"flex", gap:24, flexWrap:"wrap" }}>
+          {doctor.hospital && (
+            <div style={{ fontSize:12, color:"rgba(255,255,255,0.75)", display:"flex", alignItems:"center", gap:6 }}>
+              🏥 {doctor.hospital}
+            </div>
+          )}
+          {doctor.address && (
+            <div style={{ fontSize:12, color:"rgba(255,255,255,0.65)", display:"flex", alignItems:"center", gap:6 }}>
+              📍 {doctor.address}
+            </div>
+          )}
+          {doctor.phone && (
+            <div style={{ fontSize:12, color:"rgba(255,255,255,0.65)", display:"flex", alignItems:"center", gap:6 }}>
+              📞 {doctor.phone}
+            </div>
+          )}
         </div>
       </div>
 
@@ -252,7 +281,9 @@ function RxPreview({ data, doctor }) {
 
       {/* Footer */}
       <div style={{ padding:"16px 32px", borderTop:`1px solid ${C.gray200}`, display:"flex", justifyContent:"space-between", alignItems:"center", background:C.gray50 }}>
-        <div style={{ fontSize:11, color:C.gray400 }}>Generated via AsaanDoc · asaandoc.com · Valid for 30 days</div>
+        <div style={{ fontSize:11, color:C.gray400 }}>
+          {doctor.hospital || "AsaanDoc"} · Powered by asaandoc.com · Valid for 30 days
+        </div>
         <div style={{ textAlign:"right" }}>
           <div style={{ width:120, borderTop:`1.5px solid ${C.navy}`, marginBottom:4 }}></div>
           <div style={{ fontSize:11, color:C.gray600, fontWeight:600 }}>{doctor.name}</div>
