@@ -859,14 +859,15 @@ export default function DoctorDashboard() {
           {view==="prescriptions"&&(
             <PrescriptionPortal
               doctor={{
-               name: doctor?.name || "Doctor",
-                specialty: doctor?.specialty || "",
-                qualification: doctor?.qualifications || "",
-                license: doctor?.license || doctor?.pmcNo || "—",
-                hospital: doctor?.clinics?.[0]?.name || "AsaanDoc",
-                address: doctor?.clinics?.[0]?.address || "",
-                phone: doctor?.phone || "",
-              }}
+  name: doctor?.name || "Doctor",
+  specialty: doctor?.specialty || "",
+  qualification: doctor?.qualifications || "",
+  license: doctor?.license || doctor?.pmcNo || "—",
+  hospital: doctor?.clinics?.[0]?.name || "AsaanDoc",
+  address: doctor?.clinics?.[0]?.address || "",
+  phone: doctor?.phone || "",
+  photo: doctor?.photo || "",
+}}
               patients={todayPatients.length > 0 ? todayPatients : [
                 // fallback: show all appointment patients if no today's appts
                 ...new Map(appointments.map(a => [a.patientEmail, {
