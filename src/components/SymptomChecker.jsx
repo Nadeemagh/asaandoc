@@ -67,27 +67,6 @@ export default function SymptomChecker({ doctors = [], onBookDoctor }) {
     if (!symptoms.trim()) { setError("Please describe your symptoms."); return; }
     setError(""); setLoading(true);
 
-    const prompt = `You are AsaanDoc's AI medical assistant for Pakistan. A patient needs help identifying which doctor to see.
-
-Patient Details:
-- Age: ${age || "Not specified"}
-- Gender: ${gender}
-- Symptoms: ${symptoms}
-
-Respond in JSON format only, no extra text:
-{
-  "assessment": "2-3 sentence plain English summary of likely condition",
-  "urdu_assessment": "Same summary in Urdu script",
-  "urgency": "emergency|urgent|moderate|routine",
-  "specialist": "Most appropriate specialist type",
-  "specialist2": "Second option if applicable (or null)",
-  "possible_conditions": ["condition1", "condition2", "condition3"],
-  "home_care": ["tip1", "tip2", "tip3"],
-  "warning_signs": ["sign1", "sign2"],
-  "lab_tests": ["test1", "test2"] or [],
-  "advice": "One sentence personalized advice"
-}`;
-
     try {
       const functions = getFunctions(app);
       const analyze = httpsCallable(functions, "analyzeSymptoms");
