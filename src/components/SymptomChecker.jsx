@@ -8,11 +8,11 @@ import app from "../firebase/config";
 
 const C = {
   teal: "#2ABFBF", tealDark: "#1a9999", tealLight: "#e8f9f9",
-  navy: "#1B3A5C", navyLight: "#2d5a8e",
+  navy: "#1B3A5C",
   white: "#ffffff", gray50: "#f8fafc", gray100: "#f1f5f9",
   gray200: "#e2e8f0", gray400: "#94a3b8", gray600: "#475569",
   gray800: "#1e293b", red: "#ef4444", green: "#10b981",
-  purple: "#7c3aed", amber: "#f59e0b",
+  purple: "#7c3aed",
 };
 
 const QUICK_SYMPTOMS = [
