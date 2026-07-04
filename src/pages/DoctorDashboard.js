@@ -7,6 +7,7 @@ import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
 import PrescriptionPortal from "../components/PrescriptionPortal";
+import TokenSystem from "../components/TokenSystem";
 
 const today = new Date();
 const fmtDate = (d) => d.toISOString().split("T")[0];
@@ -494,6 +495,7 @@ export default function DoctorDashboard() {
     ["dashboard","📊","Dashboard"],
     ["schedule","📅","Schedule"],
     ["patients","👥","Appointments"],
+    ["tokens","🎫","Token Queue"],
     ["prescriptions","💊","Prescriptions"],
     ["report","📄","Daily Report"],
     ["manage","⚙️","Manage Schedule"],
@@ -873,6 +875,14 @@ export default function DoctorDashboard() {
                   ))}
                 </div>}
             </div>
+          )}
+
+          {/* ── TOKEN QUEUE ── */}
+          {view==="tokens"&&(
+            <TokenSystem
+              doctorId={doctor?.id || user?.uid}
+              appointments={appointments}
+            />
           )}
 
           {/* ── PRESCRIPTIONS ── */}
