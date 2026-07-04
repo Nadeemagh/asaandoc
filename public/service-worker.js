@@ -1,6 +1,5 @@
 // AsaanDoc Service Worker — fixed to skip chrome-extension URLs
-const CACHE_NAME = "asaandoc-v2";
-
+const CACHE_NAME = "asaandoc-v3";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
