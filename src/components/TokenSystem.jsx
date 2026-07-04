@@ -35,7 +35,8 @@ const printToken = (token) => {
         body { font-family:'Segoe UI',Arial,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f0f4f8; }
         .ticket { width:300px; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,0.15); }
         .header { background:linear-gradient(135deg,#1B3A5C,#2d5a8e); padding:20px; text-align:center; }
-        .logo { font-size:22px; font-weight:900; color:#fff; }
+        .doctor-avatar { width:70px; height:70px; border-radius:50%; background:linear-gradient(135deg,#2ABFBF,#1a9999); margin:0 auto 10px; display:flex; align-items:center; justify-content:center; border:3px solid rgba(255,255,255,0.3); font-size:36px; line-height:70px; }
+        .logo { font-size:20px; font-weight:900; color:#fff; }
         .logo span { color:#2ABFBF; }
         .tagline { font-size:11px; color:rgba(255,255,255,0.5); margin-top:2px; font-family:serif; }
         .token-box { padding:24px; text-align:center; border-bottom:2px dashed #e2e8f0; }
@@ -54,6 +55,7 @@ const printToken = (token) => {
     <body>
       <div class="ticket">
         <div class="header">
+          <div class="doctor-avatar">👨‍⚕️</div>
           <div class="logo">asaan<span>doc</span></div>
           <div class="tagline">صحت کا آسان راستہ</div>
         </div>
