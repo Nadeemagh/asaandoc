@@ -835,6 +835,12 @@ export default function PatientPortal() {
                                 {a.clinicFee>0&&<span style={{ fontSize:12, fontWeight:700, color:isOnline?"#16a34a":T.primary }}>PKR {Number(a.clinicFee).toLocaleString()}</span>}
                               </div>
                               {a.reason&&<div style={{ fontSize:12, color:T.muted, marginTop:4 }}>📝 {a.reason}</div>}
+                              {a.tokenNumber && (
+                                <div style={{ marginTop:8, display:"inline-flex", alignItems:"center", gap:8, padding:"6px 14px", borderRadius:10, background:"linear-gradient(135deg,#1B3A5C,#2d5a8e)" }}>
+                                  <div style={{ fontSize:10, color:"rgba(255,255,255,0.6)", fontWeight:700 }}>YOUR TOKEN</div>
+                                  <div style={{ fontSize:18, fontWeight:900, color:"#2ABFBF" }}>#{a.tokenNumber}</div>
+                                </div>
+                              )}
                               {a.paymentReceipt&&(
                                 <div style={{ marginTop:8, padding:"8px 12px", background:"#f0fdf4", borderRadius:8, border:"1.5px solid #86efac", display:"inline-flex", alignItems:"center", gap:8 }}>
                                   <span>💳</span>
