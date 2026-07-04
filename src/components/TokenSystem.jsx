@@ -23,154 +23,78 @@ const formatTime = (t) => {
 };
 
 // ── Print Token ───────────────────────────────────────────────
-const scriptTag = "<scri" + "pt>window.onload=()=>{window.print();setTimeout(()=>window.close(),1000);}</scri" + "pt>";
-
 const printToken = (token, doctor = {}) => {
   const win = window.open("", "_blank");
-  win.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Token #${token.tokenNumber}</title>
-      <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:'Segoe UI',Arial,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f0f4f8; }
-        .ticket { width:300px; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,0.15); }
-        .header { background:linear-gradient(135deg,#1B3A5C,#2d5a8e); padding:20px; text-align:center; }
-        .doctor-avatar { width:70px; height:70px; border-radius:50%; background:linear-gradient(135deg,#2ABFBF,#1a9999); margin:0 auto 10px; display:flex; align-items:center; justify-content:center; border:3px solid rgba(255,255,255,0.3); font-size:36px; line-height:70px; }
-        .logo { font-size:20px; font-weight:900; color:#fff; }
-        .logo span { color:#2ABFBF; }
-        .tagline { font-size:11px; color:rgba(255,255,255,0.5); margin-top:2px; font-family:serif; }
-        .doctor-info { margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.15); }
-        .doctor-name { font-size:15px; font-weight:800; color:#fff; }
-        .doctor-spec { font-size:12px; color:#2ABFBF; font-weight:600; margin-top:2px; }
-        .token-box { padding:24px; text-align:center; border-bottom:2px dashed #e2e8f0; }
-        .token-label { font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.1em; }
-        .token-num { font-size:72px; font-weight:900; color:#1B3A5C; line-height:1; margin:8px 0; }
-        .info { padding:16px 20px; }
-        .info-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:13px; }
-        .info-label { color:#94a3b8; font-weight:600; }
-        .info-value { color:#1e293b; font-weight:700; }
-        .footer { padding:16px 20px; background:#f8fafc; text-align:center; }
-        .footer-text { font-size:11px; color:#94a3b8; }
-        .barcode { margin:10px auto; height:40px; background:repeating-linear-gradient(90deg,#1B3A5C 0px,#1B3A5C 2px,transparent 2px,transparent 5px); width:200px; border-radius:2px; }
-        @media print { body{background:#fff;} .ticket{box-shadow:none;} }
-      </style>
-    </head>
-    <body>
-      <div class="ticket">
-        <div class="header">
-          <div class="doctor-avatar">👨‍⚕️</div>
-          <div class="logo">asaan<span>doc</span></div>
-          <div class="tagline">صحت کا آسان راستہ</div>
-          ${doctor.name ? `
-          <div class="doctor-info">
-            <div class="doctor-name">${doctor.name}</div>
-            ${doctor.specialty ? `<div class="doctor-spec">${doctor.specialty}</div>` : ""}
-            ${doctor.qualification ? `<div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px">${doctor.qualification}</div>` : ""}
-          </div>` : ""}
-        </div>
-        <div class="token-box">
-          <div class="token-label">Your Token Number</div>
-          <div class="token-num">#${token.tokenNumber}</div>
-          <div class="token-label">${token.isWalkIn ? "🚶 Walk-in Patient" : "📅 Appointment"}</div>
-        </div>
-        <div class="info">
-          <div class="info-row">
-            <span class="info-label">Patient</span>
-            <span class="info-value">${token.patientName || "Patient"}</span>
-          </div>
-          ${token.slot ? `<div class="info-row"><span class="info-label">Time Slot</span><span class="info-value">${token.slot}</span></div>` : ""}
-          ${token.reason ? `<div class="info-row"><span class="info-label">Reason</span><span class="info-value">${token.reason}</span></div>` : ""}
-          <div class="info-row">
-            <span class="info-label">Date</span>
-            <span class="info-value">${new Date().toLocaleDateString("en-PK",{day:"2-digit",month:"short",year:"numeric"})}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Time</span>
-            <span class="info-value">${new Date().toLocaleTimeString("en-PK",{hour:"2-digit",minute:"2-digit"})}</span>
-          </div>
-        </div>
-        <div class="footer">
-          <div class="barcode"></div>
-          <div class="footer-text" style="margin-top:10px">Please wait for your token to be called</div>
-          <div class="footer-text">asaandoc.com</div>
-        </div>
-      </div>
-      ${scriptTag}
-    </body>
-    </html>
-  `);
+  const num = token.tokenNumber;
+  const name = token.patientName || "Patient";
+  const isWalkIn = token.isWalkIn ? "Walk-in Patient" : "Appointment";
+  const reason = token.reason || "";
+  const slot = token.slot || "";
+  const date = new Date().toLocaleDateString("en-PK",{day:"2-digit",month:"short",year:"numeric"});
+  const time = new Date().toLocaleTimeString("en-PK",{hour:"2-digit",minute:"2-digit"});
+  const docName = doctor.name || "";
+  const docSpec = doctor.specialty || "";
+  const docQual = doctor.qualification || "";
+
+  const html = [
+    "<!DOCTYPE html><html><head><title>Token #" + num + "</title>",
+    "<style>",
+    "* { margin:0; padding:0; box-sizing:border-box; }",
+    "body { font-family:'Segoe UI',Arial,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f0f4f8; }",
+    ".ticket { width:300px; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,0.15); }",
+    ".header { background:linear-gradient(135deg,#1B3A5C,#2d5a8e); padding:20px; text-align:center; }",
+    ".avatar { width:70px; height:70px; border-radius:50%; background:linear-gradient(135deg,#2ABFBF,#1a9999); margin:0 auto 10px; border:3px solid rgba(255,255,255,0.3); display:flex; align-items:center; justify-content:center; font-size:36px; }",
+    ".logo { font-size:20px; font-weight:900; color:#fff; }",
+    ".logo span { color:#2ABFBF; }",
+    ".tagline { font-size:11px; color:rgba(255,255,255,0.5); margin-top:2px; font-family:serif; }",
+    ".doc-info { margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.15); }",
+    ".doc-name { font-size:15px; font-weight:800; color:#fff; }",
+    ".doc-spec { font-size:12px; color:#2ABFBF; font-weight:600; margin-top:2px; }",
+    ".doc-qual { font-size:10px; color:rgba(255,255,255,0.5); margin-top:2px; }",
+    ".token-box { padding:24px; text-align:center; border-bottom:2px dashed #e2e8f0; }",
+    ".lbl { font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.1em; }",
+    ".num { font-size:72px; font-weight:900; color:#1B3A5C; line-height:1; margin:8px 0; }",
+    ".info { padding:16px 20px; }",
+    ".row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:13px; }",
+    ".il { color:#94a3b8; font-weight:600; }",
+    ".iv { color:#1e293b; font-weight:700; }",
+    ".footer { padding:16px 20px; background:#f8fafc; text-align:center; }",
+    ".ft { font-size:11px; color:#94a3b8; }",
+    ".bar { margin:10px auto; height:40px; background:repeating-linear-gradient(90deg,#1B3A5C 0px,#1B3A5C 2px,transparent 2px,transparent 5px); width:200px; border-radius:2px; }",
+    "@media print { body{background:#fff;} .ticket{box-shadow:none;} }",
+    "</style></head><body>",
+    "<div class='ticket'>",
+    "<div class='header'>",
+    "<div class='avatar'>&#128104;&#8205;&#9877;&#65039;</div>",
+    "<div class='logo'>asaan<span>doc</span></div>",
+    "<div class='tagline'>&#1589;&#1581;&#1578; &#1603;&#1575; &#1570;&#1587;&#1575;&#1606; &#1585;&#1575;&#1587;&#1578;&#1607;</div>",
+    docName ? "<div class='doc-info'><div class='doc-name'>" + docName + "</div>" + (docSpec ? "<div class='doc-spec'>" + docSpec + "</div>" : "") + (docQual ? "<div class='doc-qual'>" + docQual + "</div>" : "") + "</div>" : "",
+    "</div>",
+    "<div class='token-box'>",
+    "<div class='lbl'>Your Token Number</div>",
+    "<div class='num'>#" + num + "</div>",
+    "<div class='lbl'>" + isWalkIn + "</div>",
+    "</div>",
+    "<div class='info'>",
+    "<div class='row'><span class='il'>Patient</span><span class='iv'>" + name + "</span></div>",
+    slot ? "<div class='row'><span class='il'>Time Slot</span><span class='iv'>" + slot + "</span></div>" : "",
+    reason ? "<div class='row'><span class='il'>Reason</span><span class='iv'>" + reason + "</span></div>" : "",
+    "<div class='row'><span class='il'>Date</span><span class='iv'>" + date + "</span></div>",
+    "<div class='row'><span class='il'>Time</span><span class='iv'>" + time + "</span></div>",
+    "</div>",
+    "<div class='footer'>",
+    "<div class='bar'></div>",
+    "<div class='ft' style='margin-top:10px'>Please wait for your token to be called</div>",
+    "<div class='ft'>asaandoc.com</div>",
+    "</div></div>",
+    "</body></html>",
+  ].join("");
+
+  win.document.write(html);
   win.document.close();
+  setTimeout(() => { win.focus(); win.print(); }, 500);
 };
-  const win = window.open("", "_blank");
-  win.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Token #${token.tokenNumber}</title>
-      <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:'Segoe UI',Arial,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f0f4f8; }
-        .ticket { width:300px; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,0.15); }
-        .header { background:linear-gradient(135deg,#1B3A5C,#2d5a8e); padding:20px; text-align:center; }
-        .doctor-avatar { width:70px; height:70px; border-radius:50%; background:linear-gradient(135deg,#2ABFBF,#1a9999); margin:0 auto 10px; display:flex; align-items:center; justify-content:center; border:3px solid rgba(255,255,255,0.3); font-size:36px; line-height:70px; }
-        .logo { font-size:20px; font-weight:900; color:#fff; }
-        .logo span { color:#2ABFBF; }
-        .tagline { font-size:11px; color:rgba(255,255,255,0.5); margin-top:2px; font-family:serif; }
-        .token-box { padding:24px; text-align:center; border-bottom:2px dashed #e2e8f0; }
-        .token-label { font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.1em; }
-        .token-num { font-size:72px; font-weight:900; color:#1B3A5C; line-height:1; margin:8px 0; }
-        .info { padding:16px 20px; }
-        .info-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:13px; }
-        .info-label { color:#94a3b8; font-weight:600; }
-        .info-value { color:#1e293b; font-weight:700; }
-        .footer { padding:16px 20px; background:#f8fafc; text-align:center; }
-        .footer-text { font-size:11px; color:#94a3b8; }
-        .barcode { margin:10px auto; height:40px; background:repeating-linear-gradient(90deg,#1B3A5C 0px,#1B3A5C 2px,transparent 2px,transparent 5px); width:200px; border-radius:2px; }
-        @media print { body{background:#fff;} .ticket{box-shadow:none;} }
-      </style>
-    </head>
-    <body>
-      <div class="ticket">
-        <div class="header">
-          <div class="doctor-avatar">👨‍⚕️</div>
-          <div class="logo">asaan<span>doc</span></div>
-          <div class="tagline">صحت کا آسان راستہ</div>
-        </div>
-        <div class="token-box">
-          <div class="token-label">Your Token Number</div>
-          <div class="token-num">#${token.tokenNumber}</div>
-          <div class="token-label">${token.isWalkIn ? "🚶 Walk-in Patient" : "📅 Appointment"}</div>
-        </div>
-        <div class="info">
-          <div class="info-row">
-            <span class="info-label">Patient</span>
-            <span class="info-value">${token.patientName || "Patient"}</span>
-          </div>
-          ${token.slot ? `<div class="info-row"><span class="info-label">Time Slot</span><span class="info-value">${token.slot}</span></div>` : ""}
-          ${token.reason ? `<div class="info-row"><span class="info-label">Reason</span><span class="info-value">${token.reason}</span></div>` : ""}
-          <div class="info-row">
-            <span class="info-label">Date</span>
-            <span class="info-value">${new Date().toLocaleDateString("en-PK",{day:"2-digit",month:"short",year:"numeric"})}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Time</span>
-            <span class="info-value">${new Date().toLocaleTimeString("en-PK",{hour:"2-digit",minute:"2-digit"})}</span>
-          </div>
-        </div>
-        <div class="footer">
-          <div class="barcode"></div>
-          <div class="footer-text" style="margin-top:10px">Please wait for your token to be called</div>
-          <div class="footer-text">asaandoc.com</div>
-        </div>
-      </div>
-      ${scriptTag}
-    </body>
-    </html>
-  `);
-  win.document.close();
-};
+
 const playBeep = () => {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
