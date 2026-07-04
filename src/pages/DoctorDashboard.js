@@ -882,6 +882,7 @@ export default function DoctorDashboard() {
             <TokenSystem
               doctorId={doctor?.id || user?.uid}
               appointments={appointments}
+              doctor={doctor}
             />
           )}
 
