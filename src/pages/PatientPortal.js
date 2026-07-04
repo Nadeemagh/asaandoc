@@ -7,6 +7,7 @@ import { logoutUser } from "../firebase/services";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
 import SymptomChecker from "../components/SymptomChecker";
+import { PromoBanner, MembershipPlans } from "../components/PromotionsSection";
 
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const today = new Date();
@@ -475,6 +476,10 @@ export default function PatientPortal() {
                   <StatCard label="Total Bookings" value={appointments.length} icon="📋" color={T.primary}/>
                   <StatCard label="Upcoming"       value={upcoming.length}      icon="⏳" color={T.accent}/>
                   <StatCard label="Completed"      value={completed.length}     icon="✅" color="#8B5CF6"/>
+                    <PromoBanner onCta={(id) => {
+  if (id === "membership") setView("membership"); // or scroll to plans
+  else if (id === "video" || id === "labtest20") setView("browse");
+}}/>
                 </div>
                 {/* Quick prescription link */}
                 <div style={{ background:"#e8f9f9", border:"1.5px solid #2ABFBF", borderRadius:12, padding:"14px 20px", marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
