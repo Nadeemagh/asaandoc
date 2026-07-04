@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase/config";
+import DoctorRegister from "../components/DoctorRegister";
 
 const ICONS = ["💊","🩺","🏥","❤️","🔬","💉","🩻","⚕️"];
 
@@ -30,6 +31,7 @@ function useTypewriter(texts, speed=80, pause=2000) {
 
 export default function AuthPage() {
   const [tab,      setTab]      = useState("signin");
+  const [showDoctorReg, setShowDoctorReg] = useState(false);
   const [name,     setName]     = useState("");
   const [phone,    setPhone]    = useState("");
   const [email,    setEmail]    = useState("");
@@ -232,7 +234,12 @@ export default function AuthPage() {
         minHeight:"100vh", overflowY:"auto",
       }}>
 
-        {success ? (
+        {showDoctorReg ? (
+          <div>
+            <button onClick={()=>setShowDoctorReg(false)} style={{background:"none",border:"none",color:"#2ABFBF",fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:16,padding:0,fontFamily:"inherit"}}>← Back to Sign In</button>
+            <DoctorRegister onBack={()=>setShowDoctorReg(false)}/>
+          </div>
+        ) : success ? (
           <div style={{ textAlign:"center", animation:"fadeInUp 0.5s ease-out" }}>
             <div style={{ fontSize:80, animation:"successPop 0.5s ease-out", display:"inline-block", marginBottom:16 }}>✅</div>
             <h2 style={{ fontSize:22, fontWeight:800, color:"#1B3A5C", margin:"0 0 8px" }}>
@@ -373,8 +380,14 @@ export default function AuthPage() {
               </div>
             </form>
 
-            {/* Trust */}
-            <div style={{ margin:"18px 0 14px", display:"flex", alignItems:"center", gap:8 }}>
+            {/* Doctor registration link */}
+            <div style={{ marginTop:16, textAlign:"center", padding:"14px", background:"#f0fdf4", borderRadius:12, border:"1.5px solid #86efac" }}>
+              <div style={{ fontSize:12, color:"#16a34a", fontWeight:600, marginBottom:6 }}>👨‍⚕️ Are you a Doctor?</div>
+              <button onClick={()=>setShowDoctorReg(true)}
+                style={{ background:"none", border:"none", color:"#2ABFBF", fontWeight:700, cursor:"pointer", fontSize:13, fontFamily:"inherit", textDecoration:"underline" }}>
+                Register as a Doctor on AsaanDoc →
+              </button>
+            </div>
               <div style={{ flex:1, height:1, background:"#e2e8f0" }}/>
               <span style={{ fontSize:10, color:"#cbd5e1", fontWeight:700, letterSpacing:"0.08em" }}>TRUSTED & SECURE</span>
               <div style={{ flex:1, height:1, background:"#e2e8f0" }}/>
