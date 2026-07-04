@@ -44,15 +44,27 @@
   <body>
     <noscript>You need to enable JavaScript to run AsaanDoc.</noscript>
     <div id="root"></div>
-    <script>
-      // Register Service Worker
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(reg => console.log('SW registered:', reg.scope))
-            .catch(err => console.log('SW error:', err));
+   
+      
+      <script>
+  // Unregister all old service workers to fix cache issues
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      registrations.forEach(reg => {
+        reg.unregister();
+        console.log('SW unregistered:', reg.scope);
+      });
+    });
+    // Clear all caches
+    if ('caches' in window) {
+      caches.keys().then(keys => {
+        keys.forEach(key => {
+          caches.delete(key);
+          console.log('Cache cleared:', key);
         });
-      }
-    </script>
+      });
+    }
+  }
+</script>
   </body>
 </html>
