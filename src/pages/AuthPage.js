@@ -388,6 +388,9 @@ export default function AuthPage() {
                 Register as a Doctor on AsaanDoc →
               </button>
             </div>
+
+            {/* Divider */}
+            <div style={{ margin:"18px 0 14px", display:"flex", alignItems:"center", gap:8 }}>
               <div style={{ flex:1, height:1, background:"#e2e8f0" }}/>
               <span style={{ fontSize:10, color:"#cbd5e1", fontWeight:700, letterSpacing:"0.08em" }}>TRUSTED & SECURE</span>
               <div style={{ flex:1, height:1, background:"#e2e8f0" }}/>
