@@ -331,6 +331,7 @@ export default function PatientPortal() {
     tagline:   urdu ? "صحت کا آسان راستہ" : "Your Health, Our Priority 💙",
     bookBtn:   urdu ? "ملاقات بک کریں" : "Book an Appointment →",
   };
+  const [view, setView] = useState("home");
   const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
