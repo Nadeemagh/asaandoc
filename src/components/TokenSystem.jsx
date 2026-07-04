@@ -95,7 +95,7 @@ const printToken = (token, doctor = {}) => {
           <div class="footer-text">asaandoc.com</div>
         </div>
       </div>
-      <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),1000);}<\/script>
+      <scr'+'ipt>window.onload=()=>{window.print();setTimeout(()=>window.close(),1000);}</scr'+'ipt>
     </body>
     </html>
   `);
@@ -163,7 +163,7 @@ const printToken = (token, doctor = {}) => {
           <div class="footer-text">asaandoc.com</div>
         </div>
       </div>
-      <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),1000);}<\/script>
+      <scr'+'ipt>window.onload=()=>{window.print();setTimeout(()=>window.close(),1000);}</scr'+'ipt>
     </body>
     </html>
   `);
