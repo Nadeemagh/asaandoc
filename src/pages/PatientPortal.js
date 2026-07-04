@@ -476,11 +476,13 @@ export default function PatientPortal() {
                   <StatCard label="Total Bookings" value={appointments.length} icon="📋" color={T.primary}/>
                   <StatCard label="Upcoming"       value={upcoming.length}      icon="⏳" color={T.accent}/>
                   <StatCard label="Completed"      value={completed.length}     icon="✅" color="#8B5CF6"/>
-                    <PromoBanner onCta={(id) => {
-  if (id === "membership") setView("membership"); // or scroll to plans
-  else if (id === "video" || id === "labtest20") setView("browse");
-}}/>
                 </div>
+
+                <PromoBanner onCta={(id) => {
+                  if (id === "membership") setView("membership");
+                  else if (id === "video" || id === "labtest20") setView("browse");
+                }}/>
+
                 {/* Quick prescription link */}
                 <div style={{ background:"#e8f9f9", border:"1.5px solid #2ABFBF", borderRadius:12, padding:"14px 20px", marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <div>
@@ -895,6 +897,14 @@ export default function PatientPortal() {
                   doctors={doctors}
                   onBookDoctor={(doc)=>{ startBooking(doc); setView("book"); }}
                 />
+              </div>
+            )}
+
+            {/* MEMBERSHIP PLANS */}
+            {view==="membership"&&(
+              <div>
+                <button onClick={()=>setView("home")} style={{ background:"none", border:"none", color:T.primary, fontWeight:600, fontSize:14, cursor:"pointer", marginBottom:16, padding:0 }}>← Back to Home</button>
+                <MembershipPlans onSelectPlan={(id)=>{ showToast(`Selected ${id} plan — payment integration coming soon.`); }}/>
               </div>
             )}
 
