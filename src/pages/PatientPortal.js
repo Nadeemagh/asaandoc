@@ -454,7 +454,7 @@ export default function PatientPortal() {
         </div>
       </div>
 
-      <div style={{ maxWidth:view==="home"?1180:960, margin:"0 auto", padding:"24px 16px" }}>
+      <div style={{ maxWidth:view==="home"?1360:960, margin:"0 auto", padding:"24px 16px" }}>
         {loadingData ? <Spinner /> : (
           <>
             {/* HOME */}
