@@ -1,383 +1,203 @@
 // src/pages/AdminPanel.js
-import { useState, useEffect, useCallback } from "react";
-import { T, Badge, Card, StatCard, Toast, Spinner } from "../components/UI";
-import { getDoctors, getAllUsers, getAllAppointments, addDoctor, deleteDoctor, updateUserPhone } from "../firebase/services";
+// Full admin dashboard — stats, revenue, doctors, patients, approvals
+import { useState, useEffect } from "react";
+import { collection, getDocs, query, orderBy, updateDoc, doc, deleteDoc, where } from "firebase/firestore";
+import { db } from "../firebase/config";
 import { logoutUser } from "../firebase/services";
 
-const fmt = (d) => { try { return new Date(d+"T00:00:00").toLocaleDateString("en-PK",{year:"numeric",month:"short",day:"numeric"}); } catch{return d||"—";} };
-const fmtT = (t) => { if(!t)return""; const [h,m]=t.split(":"); const hr=parseInt(h); return `${hr%12||12}:${m} ${hr>=12?"PM":"AM"}`; };
+const T = {
+  primary:"#2ABFBF", primaryDark:"#1a9999", primaryLight:"#e8f9f9",
+  navy:"#1B3A5C", navyLight:"#2d5a8e",
+  white:"#fff", bg:"#f8fafc", border:"#e2e8f0",
+  text:"#1e293b", muted:"#94a3b8", accent:"#10b981",
+  red:"#ef4444", amber:"#f59e0b", purple:"#7c3aed",
+};
+
+const Card = ({children, style={}}) => (
+  <div style={{background:T.white,borderRadius:14,padding:"20px 24px",border:`1px solid ${T.border}`,boxShadow:"0 1px 4px rgba(0,0,0,0.05)",...style}}>
+    {children}
+  </div>
+);
+
+const StatCard = ({label,value,icon,color,sub}) => (
+  <div style={{background:T.white,borderRadius:14,padding:"20px",border:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:16}}>
+    <div style={{width:52,height:52,borderRadius:14,background:`${color}18`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{icon}</div>
+    <div>
+      <div style={{fontSize:26,fontWeight:900,color}}>{value}</div>
+      <div style={{fontSize:13,fontWeight:600,color:T.text}}>{label}</div>
+      {sub&&<div style={{fontSize:11,color:T.muted,marginTop:2}}>{sub}</div>}
+    </div>
+  </div>
+);
 
 export default function AdminPanel() {
-  const [view, setView] = useState("dashboard");
-  const [doctors, setDoctors] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState(null);
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [filterDoc, setFilterDoc] = useState("All");
-  const [filterStatus, setFilterStatus] = useState("All");
-  const [search, setSearch] = useState("");
-  const [sidebar, setSidebar] = useState(window.innerWidth > 768);
+  const [view,        setView]        = useState("dashboard");
+  const [doctors,     setDoctors]     = useState([]);
+  const [patients,    setPatients]    = useState([]);
+  const [appointments,setAppointments]= useState([]);
+  const [pending,     setPending]     = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [toast,       setToast]       = useState("");
+  const [search,      setSearch]      = useState("");
 
-  const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),3000); };
+  const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(""),3000); };
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [d,u,a] = await Promise.all([getDoctors(), getAllUsers(), getAllAppointments()]);
-      setDoctors(Array.isArray(d)?d:[]);
-      setUsers(Array.isArray(u)?u:[]);
-      setAppointments(Array.isArray(a)?a:[]);
-    } catch(e) { showToast("Failed to load","error"); }
-    setLoading(false);
+  useEffect(()=>{
+    (async()=>{
+      try {
+        const [docSnap,userSnap,apptSnap,pendingSnap] = await Promise.all([
+          getDocs(collection(db,"doctors")),
+          getDocs(collection(db,"users")),
+          getDocs(collection(db,"appointments")),
+          getDocs(query(collection(db,"doctors"),where("approved","==",false))),
+        ]);
+        setDoctors(docSnap.docs.map(d=>({id:d.id,...d.data()})));
+        setPatients(userSnap.docs.map(d=>({id:d.id,...d.data()})).filter(u=>u.role!=="doctor"));
+        setAppointments(apptSnap.docs.map(d=>({id:d.id,...d.data()})));
+        setPending(pendingSnap.docs.map(d=>({id:d.id,...d.data()})));
+      } catch(e){ console.error(e); }
+      setLoading(false);
+    })();
   },[]);
 
-  useEffect(()=>{ load(); },[load]);
+  const approveDoctor = async (id) => {
+    await updateDoc(doc(db,"doctors",id),{approved:true});
+    setPending(p=>p.filter(d=>d.id!==id));
+    setDoctors(d=>d.map(doc=>doc.id===id?{...doc,approved:true}:doc));
+    showToast("✅ Doctor approved!");
+  };
 
-  const patients = users.filter(u=>u.role==="patient");
-  const revenue = appointments.filter(a=>a.status==="completed").reduce((s,a)=>s+Number(a.clinicFee||0),0);
+  const rejectDoctor = async (id) => {
+    if (!window.confirm("Reject and delete this doctor registration?")) return;
+    await deleteDoc(doc(db,"doctors",id));
+    setPending(p=>p.filter(d=>d.id!==id));
+    setDoctors(d=>d.filter(doc=>doc.id!==id));
+    showToast("🗑️ Doctor rejected.");
+  };
 
-  const filteredAppts = appointments.filter(a=>{
-    const dm = filterDoc==="All" || a.doctorId===filterDoc;
-    const sm = filterStatus==="All" || a.status===filterStatus;
-    return dm&&sm;
-  });
+  const toggleDoctorStatus = async (id, current) => {
+    await updateDoc(doc(db,"doctors",id),{active:!current});
+    setDoctors(d=>d.map(doc=>doc.id===id?{...doc,active:!current}:doc));
+    showToast(!current?"✅ Doctor activated":"⏸️ Doctor deactivated");
+  };
 
-  const filteredPatients = patients.filter(p=>
-    !search ||
-    p.name?.toLowerCase().includes(search.toLowerCase()) ||
-    p.email?.toLowerCase().includes(search.toLowerCase()) ||
-    p.phone?.includes(search)
+  // Stats
+  const totalRevenue = appointments.filter(a=>a.status==="completed").reduce((s,a)=>s+Number(a.clinicFee||0),0);
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayAppts = appointments.filter(a=>a.date===todayStr);
+  const thisMonthAppts = appointments.filter(a=>a.date?.startsWith(new Date().toISOString().slice(0,7)));
+  const specialties = [...new Set(doctors.map(d=>d.specialty).filter(Boolean))];
+
+  const nav = [
+    ["dashboard","📊","Dashboard"],
+    ["doctors","👨‍⚕️","Doctors"],
+    ["pending","🔔","Pending",""+pending.length],
+    ["patients","👥","Patients"],
+    ["appointments","📅","Appointments"],
+    ["revenue","💰","Revenue"],
+  ];
+
+  if (loading) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{width:40,height:40,border:`4px solid ${T.border}`,borderTop:`4px solid ${T.primary}`,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
+        <div style={{color:T.muted}}>Loading admin panel…</div>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    </div>
   );
 
-  const delDoctor = async (id, name) => {
-    if(!window.confirm(`Delete ${name}?`)) return;
-    try { await deleteDoctor(id); setDoctors(p=>p.filter(d=>d.id!==id)); showToast("Deleted!"); }
-    catch { showToast("Failed","error"); }
-  };
-
-  const addPhone = async (p) => {
-    const ph = window.prompt(`Phone for ${p.name}:`);
-    if(!ph) return;
-    try { await updateUserPhone(p.uid||p.id, ph); setUsers(prev=>prev.map(u=>(u.id===p.id||u.uid===p.uid)?{...u,phone:ph}:u)); showToast("Phone saved!"); }
-    catch { showToast("Failed","error"); }
-  };
-
-  const nav = [["dashboard","📊","Dashboard"],["doctors","🏥","Doctors"],["patients","👥","Patients"],["appointments","📋","Appointments"],["analytics","📈","Analytics"]];
-
-  if(loading) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg,fontFamily:"Inter,sans-serif"}}><div style={{textAlign:"center"}}><Spinner/><div style={{color:T.muted,marginTop:12}}>Loading...</div></div></div>;
-
   return (
-    <div style={{display:"flex",minHeight:"100vh",fontFamily:"Inter,system-ui,sans-serif",background:T.bg}}>
+    <div style={{minHeight:"100vh",fontFamily:"'Segoe UI',system-ui,sans-serif",background:T.bg,display:"flex"}}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`}</style>
 
-      {/* Mobile overlay */}
-      {sidebar && window.innerWidth <= 768 && (
-        <div onClick={()=>setSidebar(false)}
-          style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:9}}/>
-      )}
+      {toast&&<div style={{position:"fixed",top:20,right:24,background:T.navy,color:"#fff",padding:"12px 20px",borderRadius:10,zIndex:999,fontSize:14,fontWeight:600,boxShadow:"0 4px 20px rgba(0,0,0,0.2)",animation:"fadeUp 0.3s ease-out"}}>{toast}</div>}
 
-      {/* SIDEBAR */}
-      <div style={{
-        width: sidebar ? 230 : (window.innerWidth<=768 ? 0 : 64),
-        minWidth: sidebar ? 230 : (window.innerWidth<=768 ? 0 : 64),
-        background:"linear-gradient(180deg,#1a2e3b,#0a1929)",
-        display:"flex", flexDirection:"column", flexShrink:0, transition:"width 0.25s, min-width 0.25s",
-        overflow:"hidden", boxShadow:"4px 0 20px rgba(0,0,0,0.2)",
-        position: window.innerWidth<=768 ? "fixed" : "relative",
-        top:0, left:0, bottom:0, zIndex:10,
-        height: window.innerWidth<=768 ? "100vh" : "auto"
-      }}>
-        <div style={{padding:"18px 14px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:sidebar?12:0}}>
-            {sidebar ? <img src="/logo.png" alt="AsaanDoc" style={{height:32,filter:"brightness(0) invert(1)"}} onError={e=>{e.target.style.display="none";}} /> : <span style={{fontSize:22}}>⚙️</span>}
-            {sidebar && <div style={{color:"rgba(255,255,255,0.45)",fontSize:10}}>Admin Panel</div>}
-          </div>
-          {sidebar && <div style={{padding:"8px 10px",background:"rgba(255,165,0,0.15)",borderRadius:8,border:"1px solid rgba(255,165,0,0.3)"}}>
-            <div style={{color:"#FFA500",fontWeight:700,fontSize:12}}>🔐 Admin Access</div>
-            <div style={{color:"rgba(255,255,255,0.5)",fontSize:10}}>Full system control</div>
-          </div>}
+      {/* Sidebar */}
+      <div style={{width:220,background:`linear-gradient(180deg,${T.navy},#0a2d45)`,display:"flex",flexDirection:"column",flexShrink:0,boxShadow:"4px 0 20px rgba(0,0,0,0.15)"}}>
+        <div style={{padding:"24px 20px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
+          <div style={{fontSize:22,fontWeight:900,color:"#fff"}}>asaan<span style={{color:T.primary}}>doc</span></div>
+          <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginTop:2}}>Admin Panel</div>
         </div>
-        <div style={{padding:"10px 8px",flex:1}}>
-          {nav.map(([v,icon,label])=>(
-            <button key={v} onClick={()=>{ setView(v); if(window.innerWidth<=768) setSidebar(false); }}
-              style={{width:"100%",padding:"11px 10px",borderRadius:10,border:"none",cursor:"pointer",marginBottom:4,textAlign:"left",display:"flex",alignItems:"center",gap:10,background:view===v?"rgba(255,165,0,0.2)":"transparent",color:view===v?"#FFA500":"rgba(255,255,255,0.55)",fontWeight:600,fontSize:13,whiteSpace:"nowrap"}}>
-              <span style={{fontSize:16,flexShrink:0}}>{icon}</span>{sidebar&&label}
+        <div style={{padding:"12px 10px",flex:1}}>
+          {nav.map(([v,icon,label,badge])=>(
+            <button key={v} onClick={()=>setView(v)}
+              style={{width:"100%",padding:"11px 12px",borderRadius:10,border:"none",cursor:"pointer",marginBottom:4,textAlign:"left",display:"flex",alignItems:"center",gap:10,
+                background:view===v?"rgba(255,255,255,0.15)":"transparent",color:view===v?"#fff":"rgba(255,255,255,0.55)",fontWeight:600,fontSize:13,fontFamily:"inherit",justifyContent:"space-between"}}>
+              <span style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16}}>{icon}</span>{label}</span>
+              {badge&&badge!=="0"&&<span style={{background:T.red,color:"#fff",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:800}}>{badge}</span>}
             </button>
           ))}
         </div>
-        <div style={{padding:"10px 8px 16px",borderTop:"1px solid rgba(255,255,255,0.08)"}}>
-          <button onClick={logoutUser} style={{width:"100%",padding:"9px 10px",borderRadius:10,border:"1.5px solid rgba(255,255,255,0.2)",background:"transparent",color:"rgba(255,255,255,0.6)",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
-            <span>🚪</span>{sidebar&&"Sign Out"}
+        <div style={{padding:"12px 10px 20px"}}>
+          <button onClick={logoutUser}
+            style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid rgba(255,255,255,0.2)",background:"transparent",color:"rgba(255,255,255,0.6)",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8}}>
+            🚪 Sign Out
           </button>
         </div>
-        <button onClick={()=>setSidebar(o=>!o)} style={{position:"absolute",top:18,right:-12,width:24,height:24,borderRadius:"50%",background:"#FFA500",border:"2px solid #1a2e3b",color:"#fff",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>
-          {sidebar?"‹":"›"}
-        </button>
       </div>
 
-      {/* MAIN */}
+      {/* Main */}
       <div style={{flex:1,overflow:"auto"}}>
-        <div style={{background:T.white,padding:"14px 24px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:"0 2px 8px rgba(0,0,0,0.04)",position:"sticky",top:0,zIndex:9}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <button onClick={()=>setSidebar(o=>!o)}
-              style={{display:window.innerWidth<=768?"flex":"none",alignItems:"center",justifyContent:"center",
-                width:38,height:38,borderRadius:10,border:`1.5px solid ${T.border}`,
-                background:T.white,cursor:"pointer",fontSize:18,color:T.text}}>
-              ☰
-            </button>
-            <div>
-              <div style={{fontWeight:800,fontSize:18,color:T.text}}>
-                {view==="dashboard"&&"Admin Dashboard"}{view==="doctors"&&"Manage Doctors"}
-                {view==="patients"&&"All Patients"}{view==="appointments"&&"All Appointments"}{view==="analytics"&&"Analytics"}
-              </div>
-              <div style={{fontSize:12,color:T.muted}}>{new Date().toLocaleDateString("en-PK",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</div>
+        {/* Top bar */}
+        <div style={{background:T.white,padding:"14px 28px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:9,boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+          <div>
+            <div style={{fontWeight:800,fontSize:18,color:T.text}}>
+              {nav.find(n=>n[0]===view)?.[2]} {view==="pending"&&pending.length>0&&<span style={{fontSize:13,background:T.red,color:"#fff",padding:"2px 8px",borderRadius:20,marginLeft:6}}>{pending.length}</span>}
             </div>
+            <div style={{fontSize:12,color:T.muted}}>{new Date().toLocaleDateString("en-PK",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</div>
           </div>
-          <button onClick={load} style={{padding:"7px 14px",background:T.primaryLight,color:T.primary,border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"}}>🔄 Refresh</button>
+          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+            <div style={{padding:"6px 14px",background:T.primaryLight,color:T.primary,borderRadius:20,fontSize:12,fontWeight:700}}>👑 Admin</div>
+          </div>
         </div>
 
-        <div style={{padding:"24px"}}>
+        <div style={{padding:"24px 28px"}}>
 
-          {/* DASHBOARD */}
-          {view==="dashboard" && (
-            <div>
-              <h2 style={{margin:"0 0 20px",fontSize:20,fontWeight:800,color:T.text}}>Welcome, Admin 👋</h2>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,marginBottom:24}}>
-                <StatCard label="Doctors"     value={doctors.length}      icon="🏥" color={T.primary} />
-                <StatCard label="Patients"    value={patients.length}     icon="👥" color={T.accent} />
-                <StatCard label="Appointments" value={appointments.length} icon="📋" color="#8B5CF6" />
-                <StatCard label="Completed"   value={appointments.filter(a=>a.status==="completed").length} icon="✅" color="#16a34a" />
-                <StatCard label="Revenue"     value={`PKR ${revenue.toLocaleString()}`} icon="💰" color="#F59E0B" />
+          {/* ── DASHBOARD ── */}
+          {view==="dashboard"&&(
+            <div style={{animation:"fadeUp 0.4s ease-out"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:14,marginBottom:24}}>
+                <StatCard label="Total Doctors"     value={doctors.length}       icon="👨‍⚕️" color={T.primary} sub={`${doctors.filter(d=>d.approved!==false).length} approved`}/>
+                <StatCard label="Total Patients"    value={patients.length}      icon="👥"  color={T.purple} sub="registered users"/>
+                <StatCard label="Total Appointments" value={appointments.length} icon="📅"  color={T.accent} sub={`${todayAppts.length} today`}/>
+                <StatCard label="Total Revenue"     value={`PKR ${totalRevenue.toLocaleString()}`} icon="💰" color="#f59e0b" sub="from completed appts"/>
+                <StatCard label="Pending Approvals" value={pending.length}       icon="🔔"  color={T.red}    sub="doctors waiting"/>
+                <StatCard label="This Month"        value={thisMonthAppts.length} icon="📈" color={T.navyLight} sub="appointments"/>
               </div>
-              <Card>
-                <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:T.text}}>📋 Recent Appointments</h3>
-                <div style={{overflowX:"auto"}}>
-                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-                    <thead><tr style={{background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`}}>
-                      {["Patient","Doctor","Clinic","Date","Fee","Status"].map(h=><th key={h} style={{padding:"10px 12px",textAlign:"left",color:"#fff",fontSize:12}}>{h}</th>)}
-                    </tr></thead>
-                    <tbody>{appointments.slice(0,10).map((a,i)=>(
-                      <tr key={a.id} style={{background:i%2===0?T.bg:T.white}}>
-                        <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`,fontWeight:600}}>{a.patientName||"—"}</td>
-                        <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`}}>{a.doctorName||"—"}</td>
-                        <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`,color:T.muted}}>{a.clinicName||"—"}</td>
-                        <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`,color:T.muted}}>{fmt(a.date)}</td>
-                        <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`,fontWeight:700,color:T.primary}}>{a.clinicFee>0?`PKR ${Number(a.clinicFee).toLocaleString()}`:"—"}</td>
-                        <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`}}><Badge status={a.status}/></td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
-                </div>
-              </Card>
-            </div>
-          )}
 
-          {/* DOCTORS */}
-          {view==="doctors" && (
-            <div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                <h2 style={{margin:0,fontSize:18,fontWeight:800,color:T.text}}>All Doctors ({doctors.length})</h2>
-                <button onClick={()=>setShowAdd(true)} style={{padding:"10px 20px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:13,cursor:"pointer"}}>+ Add Doctor</button>
-              </div>
-              <div style={{display:"grid",gap:12}}>
-                {doctors.map(doc=>{
-                  const da=appointments.filter(a=>a.doctorId===doc.id);
-                  const dr=da.filter(a=>a.status==="completed").reduce((s,a)=>s+Number(a.clinicFee||0),0);
-                  const sel=selectedDoctor?.id===doc.id;
-                  return (
-                    <Card key={doc.id} style={{padding:"20px"}}>
-                      <div style={{display:"flex",gap:16,alignItems:"flex-start",flexWrap:"wrap"}}>
-                        {doc.photo?<img src={doc.photo} alt={doc.name} style={{width:56,height:56,borderRadius:"50%",objectFit:"cover",border:`2px solid ${T.border}`,flexShrink:0}}/>
-                          :<div style={{width:56,height:56,borderRadius:"50%",background:doc.color||T.primary,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:18,flexShrink:0}}>{doc.avatar||"DR"}</div>}
-                        <div style={{flex:1}}>
-                          <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-                            <div>
-                              <div style={{fontWeight:800,fontSize:16,color:T.text}}>{doc.name}</div>
-                              <div style={{fontSize:13,color:T.primary,fontWeight:600}}>{doc.specialty}</div>
-                              <div style={{fontSize:12,color:T.muted}}>⏳ {doc.exp} yrs · {doc.clinics?.length||0} clinics</div>
-                            </div>
-                            <div style={{display:"flex",gap:8}}>
-                              <button onClick={()=>setSelectedDoctor(sel?null:doc)} style={{padding:"7px 14px",background:T.primaryLight,color:T.primary,border:`1.5px solid ${T.primary}`,borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"}}>{sel?"Hide":"View"}</button>
-                              <button onClick={()=>delDoctor(doc.id,doc.name)} style={{padding:"7px 14px",background:"#fef2f2",color:"#EF4444",border:"1.5px solid #EF4444",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"}}>🗑️ Delete</button>
-                            </div>
-                          </div>
-                          <div style={{display:"flex",gap:12,marginTop:10,flexWrap:"wrap"}}>
-                            <div style={{padding:"8px 14px",background:T.bg,borderRadius:8,textAlign:"center"}}>
-                              <div style={{fontSize:18,fontWeight:800,color:T.primary}}>{da.length}</div>
-                              <div style={{fontSize:11,color:T.muted}}>Appointments</div>
-                            </div>
-                            <div style={{padding:"8px 14px",background:T.bg,borderRadius:8,textAlign:"center"}}>
-                              <div style={{fontSize:14,fontWeight:800,color:"#16a34a"}}>PKR {dr.toLocaleString()}</div>
-                              <div style={{fontSize:11,color:T.muted}}>Revenue</div>
-                            </div>
-                          </div>
-                          {sel && (
-                            <div style={{marginTop:16,padding:16,background:T.bg,borderRadius:12}}>
-                              {doc.qualifications&&<div style={{marginBottom:12}}>
-                                <div style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:6}}>🎓 Qualifications</div>
-                                {doc.qualifications.split("\n").filter(q=>q.trim()).map((q,i)=><div key={i} style={{fontSize:12,color:T.muted}}>• {q}</div>)}
-                              </div>}
-                              {doc.services&&<div style={{marginBottom:12}}>
-                                <div style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:6}}>🩺 Services</div>
-                                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                                  {doc.services.split("\n").filter(s=>s.trim()).map((s,i)=><span key={i} style={{padding:"3px 10px",background:T.primaryLight,color:T.primary,borderRadius:20,fontSize:11,fontWeight:600}}>{s}</span>)}
-                                </div>
-                              </div>}
-                              {doc.clinics?.map((c,i)=>(
-                                <div key={i} style={{padding:"10px 12px",background:T.white,borderRadius:8,marginBottom:8,borderLeft:`3px solid ${c.isOnline?"#16a34a":T.primary}`}}>
-                                  <div style={{display:"flex",justifyContent:"space-between"}}>
-                                    <div style={{fontWeight:600,fontSize:13,color:T.text}}>{c.isOnline?"💻":"🏥"} {c.name}</div>
-                                    <div style={{fontWeight:700,color:T.primary}}>PKR {Number(c.fee).toLocaleString()}</div>
-                                  </div>
-                                  {!c.isOnline&&<div style={{fontSize:11,color:T.muted}}>📍 {c.address}</div>}
-                                  <div style={{fontSize:11,color:T.muted}}>📅 {Array.isArray(c.days)?(c.days.length===7?"Every Day":c.days.join(", ")):c.days}{c.startTime&&` · 🕐 ${fmtT(c.startTime)} – ${fmtT(c.endTime)}`}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-              {showAdd && <AddDoctorModal onClose={()=>setShowAdd(false)} onSave={async(data)=>{
-                try { await addDoctor(data); await load(); setShowAdd(false); showToast("Doctor added! ✅"); }
-                catch { showToast("Failed","error"); }
-              }}/>}
-            </div>
-          )}
-
-          {/* PATIENTS */}
-          {view==="patients" && (
-            <div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
-                <h2 style={{margin:0,fontSize:18,fontWeight:800,color:T.text}}>All Patients ({filteredPatients.length})</h2>
-                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search name, email or phone..."
-                  style={{padding:"10px 16px",borderRadius:10,border:`1.5px solid ${T.border}`,fontSize:13,outline:"none",width:280,fontFamily:"inherit"}}/>
-              </div>
-              <Card>
-                <div style={{overflowX:"auto"}}>
-                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-                    <thead><tr style={{background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`}}>
-                      {["#","Name","Email","Phone","Appointments","Last Visit","Action"].map(h=><th key={h} style={{padding:"11px 12px",textAlign:"left",color:"#fff",fontSize:12,whiteSpace:"nowrap"}}>{h}</th>)}
-                    </tr></thead>
-                    <tbody>{filteredPatients.map((p,i)=>{
-                      const pa=appointments.filter(a=>a.patientUid===p.uid||a.patientEmail===p.email);
-                      const last=pa.sort((a,b)=>b.date?.localeCompare(a.date))[0];
-                      return (
-                        <tr key={p.id} style={{background:i%2===0?T.bg:T.white}}>
-                          <td style={{padding:"11px 12px",borderBottom:`1px solid ${T.border}`,color:T.muted}}>{i+1}</td>
-                          <td style={{padding:"11px 12px",borderBottom:`1px solid ${T.border}`,fontWeight:700}}>{p.name||"—"}</td>
-                          <td style={{padding:"11px 12px",borderBottom:`1px solid ${T.border}`,color:T.muted}}>{p.email||"—"}</td>
-                          <td style={{padding:"11px 12px",borderBottom:`1px solid ${T.border}`}}>
-                            {p.phone?<span style={{fontWeight:600,color:T.primary}}>📱 {p.phone}</span>:<span style={{color:"#EF4444",fontSize:11}}>Not provided</span>}
-                          </td>
-                          <td style={{padding:"11px 12px",borderBottom:`1px solid ${T.border}`,fontWeight:700,color:T.primary,textAlign:"center"}}>{pa.length}</td>
-                          <td style={{padding:"11px 12px",borderBottom:`1px solid ${T.border}`,color:T.muted}}>{last?fmt(last.date):"—"}</td>
-                          <td style={{padding:"11px 12px",borderBottom:`1px solid ${T.border}`}}>
-                            <button onClick={()=>addPhone(p)} style={{padding:"5px 12px",background:T.primaryLight,color:T.primary,border:`1px solid ${T.primary}`,borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>
-                              {p.phone?"Edit":"Add"} Phone
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}</tbody>
-                  </table>
-                </div>
-              </Card>
-            </div>
-          )}
-
-          {/* APPOINTMENTS */}
-          {view==="appointments" && (
-            <div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
-                <h2 style={{margin:0,fontSize:18,fontWeight:800,color:T.text}}>All Appointments ({filteredAppts.length})</h2>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  <select value={filterDoc} onChange={e=>setFilterDoc(e.target.value)} style={{padding:"8px 12px",borderRadius:8,border:`1.5px solid ${T.border}`,fontSize:13,color:T.text,outline:"none",fontFamily:"inherit"}}>
-                    <option value="All">All Doctors</option>
-                    {doctors.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
-                  </select>
-                  <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} style={{padding:"8px 12px",borderRadius:8,border:`1.5px solid ${T.border}`,fontSize:13,color:T.text,outline:"none",fontFamily:"inherit"}}>
-                    {["All","pending","confirmed","completed","cancelled"].map(s=><option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
-                  </select>
-                </div>
-              </div>
-              <Card>
-                <div style={{overflowX:"auto"}}>
-                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-                    <thead><tr style={{background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`}}>
-                      {["Patient","Email","Phone","Doctor","Clinic","Date","Time","Fee","Status"].map(h=><th key={h} style={{padding:"10px 12px",textAlign:"left",color:"#fff",fontSize:12,whiteSpace:"nowrap"}}>{h}</th>)}
-                    </tr></thead>
-                    <tbody>{filteredAppts.map((a,i)=>{
-                      const pt=users.find(u=>u.uid===a.patientUid||u.email===a.patientEmail);
-                      return (
-                        <tr key={a.id} style={{background:i%2===0?T.bg:T.white}}>
-                          <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`,fontWeight:600}}>{a.patientName||"—"}</td>
-                          <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`,color:T.muted}}>{a.patientEmail||"—"}</td>
-                          <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`}}>
-                            {pt?.phone?<span style={{fontWeight:600,color:T.primary}}>📱 {pt.phone}</span>:<span style={{color:T.muted}}>—</span>}
-                          </td>
-                          <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`}}>{a.doctorName||"—"}</td>
-                          <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`,color:T.muted}}>{a.clinicName||"—"}</td>
-                          <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`,color:T.muted}}>{fmt(a.date)}</td>
-                          <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`,color:T.muted}}>{fmtT(a.slot)}</td>
-                          <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`,fontWeight:700,color:T.primary}}>{a.clinicFee>0?`PKR ${Number(a.clinicFee).toLocaleString()}`:"—"}</td>
-                          <td style={{padding:"10px 12px",borderBottom:`1px solid ${T.border}`}}><Badge status={a.status}/></td>
-                        </tr>
-                      );
-                    })}</tbody>
-                  </table>
-                </div>
-              </Card>
-            </div>
-          )}
-
-          {/* ANALYTICS */}
-          {view==="analytics" && (
-            <div>
-              <h2 style={{margin:"0 0 20px",fontSize:18,fontWeight:800,color:T.text}}>Platform Analytics</h2>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,marginBottom:24}}>
-                <StatCard label="Doctors"    value={doctors.length} icon="🏥" color={T.primary}/>
-                <StatCard label="Patients"   value={patients.length} icon="👥" color={T.accent}/>
-                <StatCard label="Appointments" value={appointments.length} icon="📋" color="#8B5CF6"/>
-                <StatCard label="Completed"  value={appointments.filter(a=>a.status==="completed").length} icon="✅" color="#16a34a"/>
-                <StatCard label="Revenue"    value={`PKR ${revenue.toLocaleString()}`} icon="💰" color="#F59E0B"/>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+              {/* Specialty breakdown */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24}}>
                 <Card>
-                  <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:T.text}}>💰 Revenue by Doctor</h3>
-                  {doctors.map((doc,i)=>{
-                    const rev=appointments.filter(a=>a.doctorId===doc.id&&a.status==="completed").reduce((s,a)=>s+Number(a.clinicFee||0),0);
-                    const pct=revenue>0?Math.round(rev/revenue*100):0;
+                  <div style={{fontWeight:800,color:T.text,marginBottom:16,fontSize:15}}>👨‍⚕️ Doctors by Specialty</div>
+                  {specialties.slice(0,8).map(spec=>{
+                    const count = doctors.filter(d=>d.specialty===spec).length;
+                    const pct = Math.round(count/doctors.length*100);
                     return (
-                      <div key={i} style={{marginBottom:12}}>
+                      <div key={spec} style={{marginBottom:10}}>
                         <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                          <span style={{fontSize:12,fontWeight:600,color:T.text}}>{doc.name?.split(" ").slice(0,2).join(" ")}</span>
-                          <span style={{fontSize:12,fontWeight:700,color:T.primary}}>PKR {rev.toLocaleString()}</span>
+                          <span style={{fontSize:13,color:T.text,fontWeight:600}}>{spec}</span>
+                          <span style={{fontSize:13,color:T.primary,fontWeight:700}}>{count}</span>
                         </div>
-                        <div style={{height:7,background:T.bg,borderRadius:10,overflow:"hidden"}}>
-                          <div style={{height:"100%",borderRadius:10,background:`linear-gradient(90deg,${T.primary},${T.accent})`,width:`${pct}%`}}/>
+                        <div style={{height:6,background:T.bg,borderRadius:10,overflow:"hidden"}}>
+                          <div style={{height:"100%",background:`linear-gradient(90deg,${T.primary},${T.primaryDark})`,borderRadius:10,width:`${pct}%`}}/>
                         </div>
                       </div>
                     );
                   })}
                 </Card>
                 <Card>
-                  <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700,color:T.text}}>📊 Status Breakdown</h3>
-                  {[["confirmed",T.accent,"Confirmed"],["pending","#F59E0B","Pending"],["completed","#16a34a","Completed"],["cancelled","#EF4444","Cancelled"]].map(([st,col,lbl])=>{
+                  <div style={{fontWeight:800,color:T.text,marginBottom:16,fontSize:15}}>📅 Appointment Status</div>
+                  {[["confirmed",T.accent,"Confirmed"],["pending","#f59e0b","Pending"],["completed",T.primary,"Completed"],["cancelled",T.red,"Cancelled"]].map(([st,col,lbl])=>{
                     const cnt=appointments.filter(a=>a.status===st).length;
                     const pct=appointments.length?Math.round(cnt/appointments.length*100):0;
                     return (
-                      <div key={st} style={{marginBottom:12}}>
+                      <div key={st} style={{marginBottom:10}}>
                         <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                          <span style={{fontSize:13,fontWeight:600,color:T.text}}>{lbl}</span>
+                          <span style={{fontSize:13,color:T.text,fontWeight:600}}>{lbl}</span>
                           <span style={{fontSize:13,fontWeight:700,color:col}}>{cnt} ({pct}%)</span>
                         </div>
-                        <div style={{height:8,background:T.bg,borderRadius:10,overflow:"hidden"}}>
+                        <div style={{height:6,background:T.bg,borderRadius:10,overflow:"hidden"}}>
                           <div style={{height:"100%",borderRadius:10,background:col,width:`${pct}%`}}/>
                         </div>
                       </div>
@@ -385,59 +205,251 @@ export default function AdminPanel() {
                   })}
                 </Card>
               </div>
+
+              {/* Recent appointments */}
+              <Card>
+                <div style={{fontWeight:800,color:T.text,marginBottom:16,fontSize:15}}>📋 Recent Appointments</div>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                  <thead>
+                    <tr style={{background:T.bg}}>
+                      {["Patient","Doctor","Date","Clinic","Fee","Status"].map(h=>(
+                        <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.05em",borderBottom:`2px solid ${T.border}`}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {appointments.sort((a,b)=>b.date?.localeCompare(a.date||"")).slice(0,10).map((a,i)=>(
+                      <tr key={a.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.bg}}>
+                        <td style={{padding:"10px 12px",fontWeight:600,color:T.text}}>{a.patientName||a.patientEmail?.split("@")[0]||"—"}</td>
+                        <td style={{padding:"10px 12px",color:T.muted}}>{a.doctorName||"—"}</td>
+                        <td style={{padding:"10px 12px",color:T.muted}}>{a.date||"—"}</td>
+                        <td style={{padding:"10px 12px",color:T.muted}}>{a.clinicName||"—"}</td>
+                        <td style={{padding:"10px 12px",fontWeight:700,color:T.primary}}>PKR {Number(a.clinicFee||0).toLocaleString()}</td>
+                        <td style={{padding:"10px 12px"}}>
+                          <span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,
+                            background:a.status==="completed"?"#f0fdf4":a.status==="confirmed"?"#e0f2fe":a.status==="pending"?"#fffbeb":"#fef2f2",
+                            color:a.status==="completed"?T.accent:a.status==="confirmed"?"#0369a1":a.status==="pending"?"#f59e0b":T.red}}>
+                            {a.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
             </div>
           )}
 
-        </div>
-      </div>
-      {toast && <Toast msg={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
-    </div>
-  );
-}
+          {/* ── PENDING APPROVALS ── */}
+          {view==="pending"&&(
+            <div style={{animation:"fadeUp 0.4s ease-out"}}>
+              {pending.length===0?(
+                <Card style={{textAlign:"center",padding:"48px"}}>
+                  <div style={{fontSize:48,marginBottom:12}}>✅</div>
+                  <div style={{fontWeight:700,color:T.text,fontSize:16}}>No pending approvals</div>
+                  <div style={{color:T.muted,marginTop:6}}>All doctor registrations have been reviewed</div>
+                </Card>
+              ):(
+                <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                  {pending.map(doc=>(
+                    <Card key={doc.id} style={{padding:"20px 24px"}}>
+                      <div style={{display:"flex",alignItems:"flex-start",gap:16,flexWrap:"wrap"}}>
+                        <div style={{width:56,height:56,borderRadius:"50%",background:`linear-gradient(135deg,${T.primary},${T.navy})`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:22,flexShrink:0}}>
+                          {doc.name?.charAt(0)||"D"}
+                        </div>
+                        <div style={{flex:1}}>
+                          <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
+                            <span style={{fontWeight:800,fontSize:16,color:T.text}}>{doc.name}</span>
+                            <span style={{fontSize:11,background:"#fffbeb",color:"#f59e0b",padding:"2px 10px",borderRadius:20,fontWeight:700,border:"1px solid #fde68a"}}>⏳ Pending Review</span>
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8,fontSize:13,color:T.muted}}>
+                            <div>🏥 <strong>Specialty:</strong> {doc.specialty||"—"}</div>
+                            <div>🎓 <strong>Qualification:</strong> {doc.qualifications||doc.qualification||"—"}</div>
+                            <div>📋 <strong>PMC No:</strong> {doc.pmcNo||doc.license||"—"}</div>
+                            <div>⏳ <strong>Experience:</strong> {doc.exp||"—"} years</div>
+                            <div>📧 <strong>Email:</strong> {doc.email||"—"}</div>
+                            <div>📱 <strong>Phone:</strong> {doc.phone||"—"}</div>
+                          </div>
+                          {doc.bio&&<div style={{marginTop:10,fontSize:13,color:T.muted,padding:"10px",background:T.bg,borderRadius:8}}>📝 {doc.bio}</div>}
+                        </div>
+                        <div style={{display:"flex",gap:8,flexShrink:0}}>
+                          <button onClick={()=>approveDoctor(doc.id)}
+                            style={{padding:"10px 20px",background:`linear-gradient(135deg,${T.accent},#059669)`,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
+                            ✅ Approve
+                          </button>
+                          <button onClick={()=>rejectDoctor(doc.id)}
+                            style={{padding:"10px 16px",background:"#fef2f2",color:T.red,border:`1.5px solid ${T.red}`,borderRadius:10,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
+                            ✗ Reject
+                          </button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-function AddDoctorModal({onClose, onSave}) {
-  const [form, setForm] = useState({name:"",specialty:"",exp:"",color:"#218EB6",qualifications:"",services:""});
-  const [saving, setSaving] = useState(false);
-  const save = async () => {
-    if(!form.name||!form.specialty){alert("Name and specialty required!");return;}
-    setSaving(true);
-    const initials=form.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
-    await onSave({...form,exp:Number(form.exp)||0,avatar:initials,clinics:[]});
-    setSaving(false);
-  };
-  return (
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:16,padding:28,maxWidth:500,width:"100%",maxHeight:"85vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <h3 style={{margin:0,fontSize:17,fontWeight:800,color:T.text}}>+ Add New Doctor</h3>
-          <button onClick={onClose} style={{background:"none",border:"none",fontSize:24,cursor:"pointer",color:T.muted}}>×</button>
-        </div>
-        {[["Full Name","name","Dr. Ahmed Ali"],["Specialty","specialty","Cardiologist"],["Years of Experience","exp","10"]].map(([lbl,key,ph])=>(
-          <div key={key} style={{marginBottom:14}}>
-            <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6}}>{lbl}</label>
-            <input value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} placeholder={ph}
-              style={{padding:"10px 14px",borderRadius:9,border:`1.5px solid ${T.border}`,fontSize:14,color:T.text,width:"100%",outline:"none",fontFamily:"inherit"}}/>
-          </div>
-        ))}
-        <div style={{marginBottom:14}}>
-          <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6}}>Profile Color</label>
-          <input type="color" value={form.color} onChange={e=>setForm(f=>({...f,color:e.target.value}))} style={{width:50,height:36,borderRadius:8,border:`1.5px solid ${T.border}`,cursor:"pointer"}}/>
-        </div>
-        <div style={{marginBottom:14}}>
-          <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6}}>Qualifications</label>
-          <textarea value={form.qualifications} onChange={e=>setForm(f=>({...f,qualifications:e.target.value}))} placeholder="MBBS, FCPS..." rows={3}
-            style={{padding:"10px 14px",borderRadius:9,border:`1.5px solid ${T.border}`,fontSize:14,color:T.text,width:"100%",outline:"none",fontFamily:"inherit",resize:"vertical"}}/>
-        </div>
-        <div style={{marginBottom:20}}>
-          <label style={{display:"block",fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6}}>Services (one per line)</label>
-          <textarea value={form.services} onChange={e=>setForm(f=>({...f,services:e.target.value}))} placeholder="Heart Treatment&#10;ECG" rows={3}
-            style={{padding:"10px 14px",borderRadius:9,border:`1.5px solid ${T.border}`,fontSize:14,color:T.text,width:"100%",outline:"none",fontFamily:"inherit",resize:"vertical"}}/>
-        </div>
-        <div style={{display:"flex",gap:10}}>
-          <button onClick={onClose} style={{flex:1,padding:"12px",background:T.white,border:`2px solid ${T.border}`,borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer",color:T.muted}}>Cancel</button>
-          <button onClick={save} disabled={saving} style={{flex:2,padding:"12px",background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:saving?"not-allowed":"pointer",opacity:saving?0.7:1}}>
-            {saving?"Adding...":"✅ Add Doctor"}
-          </button>
+          {/* ── DOCTORS ── */}
+          {view==="doctors"&&(
+            <div style={{animation:"fadeUp 0.4s ease-out"}}>
+              <div style={{marginBottom:16,display:"flex",gap:12,alignItems:"center"}}>
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search doctors..."
+                  style={{flex:1,padding:"10px 16px",border:`1.5px solid ${T.border}`,borderRadius:10,fontSize:14,fontFamily:"inherit",outline:"none"}}
+                  onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor=T.border}/>
+                <div style={{color:T.muted,fontSize:13,whiteSpace:"nowrap"}}>{doctors.length} total doctors</div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {doctors.filter(d=>!search||d.name?.toLowerCase().includes(search.toLowerCase())||d.specialty?.toLowerCase().includes(search.toLowerCase())).map(doc=>(
+                  <Card key={doc.id} style={{padding:"16px 20px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+                      {doc.photo
+                        ?<img src={doc.photo} alt={doc.name} style={{width:48,height:48,borderRadius:"50%",objectFit:"cover",flexShrink:0}} onError={e=>{e.target.style.display="none";}}/>
+                        :<div style={{width:48,height:48,borderRadius:"50%",background:`linear-gradient(135deg,${T.primary},${T.navy})`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:18,flexShrink:0}}>{doc.name?.charAt(0)||"D"}</div>
+                      }
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                          <span style={{fontWeight:700,fontSize:15,color:T.text}}>{doc.name}</span>
+                          <span style={{fontSize:11,padding:"2px 8px",borderRadius:20,fontWeight:700,
+                            background:doc.approved===false?"#fffbeb":doc.active===false?"#fef2f2":"#f0fdf4",
+                            color:doc.approved===false?"#f59e0b":doc.active===false?T.red:T.accent}}>
+                            {doc.approved===false?"Pending":doc.active===false?"Inactive":"Active"}
+                          </span>
+                        </div>
+                        <div style={{fontSize:12,color:T.primary,fontWeight:600}}>{doc.specialty}</div>
+                        <div style={{fontSize:11,color:T.muted}}>⏳ {doc.exp} yrs · PMC: {doc.pmcNo||doc.license||"—"} · {(doc.clinics||[]).length} clinic(s)</div>
+                      </div>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>toggleDoctorStatus(doc.id,doc.active!==false)}
+                          style={{padding:"8px 14px",background:doc.active===false?"#f0fdf4":"#fef2f2",color:doc.active===false?T.accent:T.red,border:`1.5px solid ${doc.active===false?T.accent:T.red}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                          {doc.active===false?"✅ Activate":"⏸️ Deactivate"}
+                        </button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── PATIENTS ── */}
+          {view==="patients"&&(
+            <div style={{animation:"fadeUp 0.4s ease-out"}}>
+              <div style={{marginBottom:16,display:"flex",gap:12,alignItems:"center"}}>
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search patients..."
+                  style={{flex:1,padding:"10px 16px",border:`1.5px solid ${T.border}`,borderRadius:10,fontSize:14,fontFamily:"inherit",outline:"none"}}
+                  onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor=T.border}/>
+                <div style={{color:T.muted,fontSize:13,whiteSpace:"nowrap"}}>{patients.length} total patients</div>
+              </div>
+              <Card>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                  <thead>
+                    <tr style={{background:T.bg}}>
+                      {["Name","Email","Phone","Appointments","Joined"].map(h=>(
+                        <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",borderBottom:`2px solid ${T.border}`}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {patients.filter(p=>!search||p.name?.toLowerCase().includes(search.toLowerCase())||p.email?.toLowerCase().includes(search.toLowerCase())).map((p,i)=>{
+                      const apptCount = appointments.filter(a=>a.patientEmail===p.email).length;
+                      return (
+                        <tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.bg}}>
+                          <td style={{padding:"10px 12px",fontWeight:600,color:T.text}}>{p.name||"—"}</td>
+                          <td style={{padding:"10px 12px",color:T.muted}}>{p.email||"—"}</td>
+                          <td style={{padding:"10px 12px",color:T.muted}}>{p.phone?`+92${p.phone}`:"—"}</td>
+                          <td style={{padding:"10px 12px",color:T.primary,fontWeight:700}}>{apptCount}</td>
+                          <td style={{padding:"10px 12px",color:T.muted,fontSize:11}}>{p.createdAt?.seconds?new Date(p.createdAt.seconds*1000).toLocaleDateString("en-PK"):"—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </Card>
+            </div>
+          )}
+
+          {/* ── APPOINTMENTS ── */}
+          {view==="appointments"&&(
+            <div style={{animation:"fadeUp 0.4s ease-out"}}>
+              <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+                {["all","pending","confirmed","completed","cancelled"].map(s=>(
+                  <button key={s} onClick={()=>setSearch(s==="all"?"":s)}
+                    style={{padding:"7px 16px",borderRadius:20,border:`1.5px solid ${T.border}`,background:search===s||(!search&&s==="all")?T.primary:T.white,color:search===s||(!search&&s==="all")?"#fff":T.muted,fontSize:12,fontWeight:600,cursor:"pointer",textTransform:"capitalize",fontFamily:"inherit"}}>
+                    {s} ({s==="all"?appointments.length:appointments.filter(a=>a.status===s).length})
+                  </button>
+                ))}
+              </div>
+              <Card>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                  <thead>
+                    <tr style={{background:T.bg}}>
+                      {["Patient","Doctor","Date","Clinic","Fee","Status"].map(h=>(
+                        <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",borderBottom:`2px solid ${T.border}`}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {appointments.filter(a=>!search||a.status===search).sort((a,b)=>b.date?.localeCompare(a.date||"")).map((a,i)=>(
+                      <tr key={a.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.bg}}>
+                        <td style={{padding:"10px 12px",fontWeight:600}}>{a.patientName||a.patientEmail?.split("@")[0]||"—"}</td>
+                        <td style={{padding:"10px 12px",color:T.muted}}>{a.doctorName||"—"}</td>
+                        <td style={{padding:"10px 12px",color:T.muted}}>{a.date||"—"}</td>
+                        <td style={{padding:"10px 12px",color:T.muted}}>{a.clinicName||"—"}</td>
+                        <td style={{padding:"10px 12px",fontWeight:700,color:T.primary}}>PKR {Number(a.clinicFee||0).toLocaleString()}</td>
+                        <td style={{padding:"10px 12px"}}>
+                          <span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,
+                            background:a.status==="completed"?"#f0fdf4":a.status==="confirmed"?"#e0f2fe":a.status==="pending"?"#fffbeb":"#fef2f2",
+                            color:a.status==="completed"?T.accent:a.status==="confirmed"?"#0369a1":a.status==="pending"?"#f59e0b":T.red}}>
+                            {a.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            </div>
+          )}
+
+          {/* ── REVENUE ── */}
+          {view==="revenue"&&(
+            <div style={{animation:"fadeUp 0.4s ease-out"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:14,marginBottom:24}}>
+                <StatCard label="Total Revenue"     value={`PKR ${totalRevenue.toLocaleString()}`}  icon="💰" color="#f59e0b"/>
+                <StatCard label="This Month"        value={`PKR ${thisMonthAppts.filter(a=>a.status==="completed").reduce((s,a)=>s+Number(a.clinicFee||0),0).toLocaleString()}`} icon="📅" color={T.accent}/>
+                <StatCard label="Today"             value={`PKR ${todayAppts.filter(a=>a.status==="completed").reduce((s,a)=>s+Number(a.clinicFee||0),0).toLocaleString()}`} icon="🌅" color={T.primary}/>
+                <StatCard label="Completed Appts"   value={appointments.filter(a=>a.status==="completed").length} icon="✅" color={T.purple}/>
+              </div>
+              <Card>
+                <div style={{fontWeight:800,color:T.text,marginBottom:16,fontSize:15}}>💰 Revenue by Doctor</div>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                  <thead>
+                    <tr style={{background:T.bg}}>
+                      {["Doctor","Specialty","Completed","Revenue"].map(h=>(
+                        <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",borderBottom:`2px solid ${T.border}`}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {doctors.map((doc,i)=>{
+                      const docAppts = appointments.filter(a=>a.doctorName===doc.name&&a.status==="completed");
+                      const rev = docAppts.reduce((s,a)=>s+Number(a.clinicFee||0),0);
+                      return (
+                        <tr key={doc.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.bg}}>
+                          <td style={{padding:"10px 12px",fontWeight:700,color:T.text}}>{doc.name}</td>
+                          <td style={{padding:"10px 12px",color:T.muted}}>{doc.specialty}</td>
+                          <td style={{padding:"10px 12px",color:T.accent,fontWeight:700}}>{docAppts.length}</td>
+                          <td style={{padding:"10px 12px",fontWeight:800,color:T.primary}}>PKR {rev.toLocaleString()}</td>
+                        </tr>
+                      );
+                    }).sort((a,b)=>0)}
+                  </tbody>
+                </table>
+              </Card>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
