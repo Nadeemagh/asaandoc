@@ -23,6 +23,8 @@ const formatTime = (t) => {
 };
 
 // ── Print Token ───────────────────────────────────────────────
+const scriptTag = "<scri" + "pt>window.onload=()=>{window.print();setTimeout(()=>window.close(),1000);}</scri" + "pt>";
+
 const printToken = (token, doctor = {}) => {
   const win = window.open("", "_blank");
   win.document.write(`
@@ -95,7 +97,7 @@ const printToken = (token, doctor = {}) => {
           <div class="footer-text">asaandoc.com</div>
         </div>
       </div>
-      <scr'+'ipt>window.onload=()=>{window.print();setTimeout(()=>window.close(),1000);}</scr'+'ipt>
+      ${scriptTag}
     </body>
     </html>
   `);
@@ -163,7 +165,7 @@ const printToken = (token, doctor = {}) => {
           <div class="footer-text">asaandoc.com</div>
         </div>
       </div>
-      <scr'+'ipt>window.onload=()=>{window.print();setTimeout(()=>window.close(),1000);}</scr'+'ipt>
+      ${scriptTag}
     </body>
     </html>
   `);
