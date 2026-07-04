@@ -1,0 +1,371 @@
+// src/components/TokenSystem.jsx
+// Token management for doctor portal
+// Shows today's queue, allows manual token generation
+
+import { useState, useEffect } from "react";
+import { collection, query, where, getDocs, updateDoc, doc, orderBy } from "firebase/firestore";
+import { db } from "../firebase/config";
+
+const C = {
+  teal:"#2ABFBF", tealDark:"#1a9999", tealLight:"#e8f9f9",
+  navy:"#1B3A5C", white:"#ffffff", gray50:"#f8fafc",
+  gray100:"#f1f5f9", gray200:"#e2e8f0", gray400:"#94a3b8",
+  gray600:"#475569", gray800:"#1e293b", red:"#ef4444", green:"#10b981",
+};
+
+const today = () => new Date().toISOString().split("T")[0];
+
+const formatTime = (t) => {
+  if (!t) return "";
+  const [h, m] = t.split(":");
+  const hour = parseInt(h);
+  return `${hour % 12 || 12}:${m} ${hour >= 12 ? "PM" : "AM"}`;
+};
+
+function TokenCard({ token, onCall, onComplete, onSkip }) {
+  const statusColor = {
+    waiting: C.teal, called: "#f59e0b", completed: C.green, skipped: C.gray400,
+  }[token.tokenStatus] || C.gray400;
+
+  const statusBg = {
+    waiting: C.tealLight, called: "#fffbeb", completed: "#f0fdf4", skipped: C.gray100,
+  }[token.tokenStatus] || C.gray100;
+
+  return (
+    <div style={{
+      background: C.white, borderRadius: 14, padding: "16px 18px",
+      border: `2px solid ${token.tokenStatus === "called" ? "#f59e0b" : token.tokenStatus === "completed" ? C.green : C.gray200}`,
+      display: "flex", alignItems: "center", gap: 16,
+      boxShadow: token.tokenStatus === "called" ? "0 4px 20px rgba(245,158,11,0.2)" : "0 1px 4px rgba(0,0,0,0.05)",
+      transition: "all 0.2s",
+    }}>
+      {/* Token number */}
+      <div style={{
+        width: 56, height: 56, borderRadius: 14, flexShrink: 0,
+        background: token.tokenStatus === "completed" ? C.green : token.tokenStatus === "called" ? "#f59e0b" : C.navy,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        boxShadow: `0 4px 12px ${token.tokenStatus === "called" ? "rgba(245,158,11,0.4)" : "rgba(27,58,92,0.3)"}`,
+      }}>
+        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.7)", fontWeight: 700, letterSpacing: "0.05em" }}>TOKEN</div>
+        <div style={{ fontSize: 22, fontWeight: 900, color: "#fff", lineHeight: 1 }}>#{token.tokenNumber}</div>
+      </div>
+
+      {/* Patient info */}
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 800, fontSize: 15, color: C.navy }}>{token.patientName || "Walk-in Patient"}</div>
+        <div style={{ fontSize: 12, color: C.gray400, marginTop: 2 }}>
+          {token.slot ? `🕐 ${formatTime(token.slot)}` : "🚶 Walk-in"}
+          {token.patientPhone ? ` · 📱 ${token.patientPhone}` : ""}
+        </div>
+        {token.reason && <div style={{ fontSize: 12, color: C.gray600, marginTop: 2 }}>📝 {token.reason}</div>}
+        <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 20, background: statusBg, border: `1px solid ${statusColor}30` }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: statusColor, textTransform: "capitalize" }}>{token.tokenStatus}</span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+        {token.tokenStatus === "waiting" && (
+          <button onClick={() => onCall(token)}
+            style={{ padding: "8px 16px", background: `linear-gradient(135deg,${C.teal},${C.tealDark})`, color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            📢 Call
+          </button>
+        )}
+        {token.tokenStatus === "called" && (
+          <>
+            <button onClick={() => onComplete(token)}
+              style={{ padding: "8px 14px", background: "#f0fdf4", color: C.green, border: `1.5px solid ${C.green}`, borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              ✅ Done
+            </button>
+            <button onClick={() => onSkip(token)}
+              style={{ padding: "8px 14px", background: C.gray100, color: C.gray600, border: `1.5px solid ${C.gray200}`, borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              ⏭ Skip
+            </button>
+          </>
+        )}
+        {token.tokenStatus === "completed" && (
+          <div style={{ fontSize: 24, textAlign: "center" }}>✅</div>
+        )}
+        {token.tokenStatus === "skipped" && (
+          <button onClick={() => onCall(token)}
+            style={{ padding: "8px 14px", background: C.gray100, color: C.gray600, border: `1.5px solid ${C.gray200}`, borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            🔄 Re-call
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function TokenSystem({ doctorId, appointments = [] }) {
+  const [tokens, setTokens] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showWalkIn, setShowWalkIn] = useState(false);
+  const [walkInName, setWalkInName] = useState("");
+  const [walkInPhone, setWalkInPhone] = useState("");
+  const [walkInReason, setWalkInReason] = useState("");
+  const [currentToken, setCurrentToken] = useState(null);
+  const [toast, setToast] = useState("");
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+
+  // Load today's tokens from appointments
+  useEffect(() => {
+    const todayStr = today();
+    const todayAppts = appointments.filter(a => a.date === todayStr && a.status !== "cancelled");
+
+    // Build tokens from appointments (auto-assigned numbers by slot time)
+    const sorted = [...todayAppts].sort((a, b) => (a.slot || "").localeCompare(b.slot || ""));
+    const built = sorted.map((a, i) => ({
+      id: a.id,
+      tokenNumber: i + 1,
+      patientName: a.patientName || a.patientEmail?.split("@")[0] || "Patient",
+      patientPhone: a.patientPhone || "",
+      slot: a.slot,
+      reason: a.reason,
+      tokenStatus: a.tokenStatus || "waiting",
+      isWalkIn: false,
+      appointmentId: a.id,
+    }));
+
+    // Add any stored walk-in tokens from localStorage
+    try {
+      const stored = JSON.parse(localStorage.getItem(`tokens_${doctorId}_${todayStr}`) || "[]");
+      const walkIns = stored.map((w, i) => ({
+        ...w,
+        tokenNumber: built.length + i + 1,
+      }));
+      setTokens([...built, ...walkIns]);
+    } catch {
+      setTokens(built);
+    }
+    setLoading(false);
+
+    // Set current called token
+    const called = built.find(t => t.tokenStatus === "called");
+    if (called) setCurrentToken(called);
+  }, [appointments, doctorId]);
+
+  const updateTokenStatus = async (token, newStatus) => {
+    const updated = tokens.map(t => t.id === token.id ? { ...t, tokenStatus: newStatus } : t);
+    setTokens(updated);
+
+    // Save to Firestore if it's an appointment token
+    if (token.appointmentId) {
+      try {
+        await updateDoc(doc(db, "appointments", token.appointmentId), { tokenStatus: newStatus });
+      } catch(e) { console.error(e); }
+    }
+
+    // Save walk-in tokens to localStorage
+    const todayStr = today();
+    const walkIns = updated.filter(t => t.isWalkIn);
+    localStorage.setItem(`tokens_${doctorId}_${todayStr}`, JSON.stringify(walkIns));
+
+    if (newStatus === "called") {
+      setCurrentToken(token);
+      showToast(`📢 Now calling Token #${token.tokenNumber} — ${token.patientName}`);
+    } else if (newStatus === "completed") {
+      if (currentToken?.id === token.id) setCurrentToken(null);
+      showToast(`✅ Token #${token.tokenNumber} completed`);
+    } else if (newStatus === "skipped") {
+      if (currentToken?.id === token.id) setCurrentToken(null);
+      showToast(`⏭ Token #${token.tokenNumber} skipped`);
+    }
+  };
+
+  const addWalkIn = () => {
+    if (!walkInName.trim()) return;
+    const todayStr = today();
+    const newToken = {
+      id: `walkin-${Date.now()}`,
+      tokenNumber: tokens.length + 1,
+      patientName: walkInName.trim(),
+      patientPhone: walkInPhone.trim(),
+      reason: walkInReason.trim(),
+      slot: null,
+      tokenStatus: "waiting",
+      isWalkIn: true,
+      appointmentId: null,
+    };
+    const updated = [...tokens, newToken];
+    setTokens(updated);
+
+    // Save walk-ins to localStorage
+    const walkIns = updated.filter(t => t.isWalkIn);
+    localStorage.setItem(`tokens_${doctorId}_${todayStr}`, JSON.stringify(walkIns));
+
+    setWalkInName(""); setWalkInPhone(""); setWalkInReason("");
+    setShowWalkIn(false);
+    showToast(`🎫 Token #${newToken.tokenNumber} issued for ${newToken.patientName}`);
+  };
+
+  const callNext = () => {
+    const next = tokens.find(t => t.tokenStatus === "waiting");
+    if (next) updateTokenStatus(next, "called");
+    else showToast("No more patients waiting");
+  };
+
+  const stats = {
+    waiting: tokens.filter(t => t.tokenStatus === "waiting").length,
+    called: tokens.filter(t => t.tokenStatus === "called").length,
+    completed: tokens.filter(t => t.tokenStatus === "completed").length,
+    total: tokens.length,
+  };
+
+  if (loading) return <div style={{ textAlign: "center", padding: 40, color: C.gray400 }}>Loading tokens…</div>;
+
+  return (
+    <div style={{ fontFamily: "'Segoe UI',system-ui,sans-serif" }}>
+      <style>{`@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`}</style>
+
+      {toast && (
+        <div style={{ position: "fixed", top: 70, right: 24, background: C.navy, color: "#fff", padding: "12px 20px", borderRadius: 10, zIndex: 999, fontSize: 14, fontWeight: 600, boxShadow: "0 4px 20px rgba(0,0,0,0.2)", animation: "fadeUp 0.3s ease-out" }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ background: `linear-gradient(135deg,${C.navy},#2d5a8e)`, borderRadius: 16, padding: "20px 24px", marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#fff" }}>🎫 Token Queue</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>
+              {new Date().toLocaleDateString("en-PK", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={callNext}
+              style={{ padding: "10px 20px", background: C.teal, color: "#fff", border: "none", borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 4px 12px rgba(42,191,191,0.4)" }}>
+              📢 Call Next
+            </button>
+            <button onClick={() => setShowWalkIn(true)}
+              style={{ padding: "10px 20px", background: "rgba(255,255,255,0.15)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.3)", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+              🚶 Walk-in
+            </button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginTop: 16 }}>
+          {[["Total", stats.total, "📋", "rgba(255,255,255,0.1)"],["Waiting", stats.waiting, "⏳", "rgba(42,191,191,0.2)"],["Called", stats.called, "📢", "rgba(245,158,11,0.2)"],["Done", stats.completed, "✅", "rgba(16,185,129,0.2)"]].map(([l,v,icon,bg])=>(
+            <div key={l} style={{ padding: "12px", borderRadius: 12, background: bg, textAlign: "center" }}>
+              <div style={{ fontSize: 18 }}>{icon}</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: "#fff" }}>{v}</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", fontWeight: 700 }}>{l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Currently Calling */}
+      {currentToken && (
+        <div style={{ background: "linear-gradient(135deg,#fffbeb,#fef3c7)", border: "2px solid #f59e0b", borderRadius: 16, padding: "18px 22px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16, animation: "pulse 2s ease-in-out infinite", boxShadow: "0 4px 20px rgba(245,158,11,0.2)" }}>
+          <div style={{ fontSize: 40 }}>📢</div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.05em" }}>Now Calling</div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: "#92400e" }}>Token #{currentToken.tokenNumber}</div>
+            <div style={{ fontSize: 14, color: "#78350f" }}>{currentToken.patientName} — Please proceed to the doctor</div>
+          </div>
+        </div>
+      )}
+
+      {/* Token list */}
+      {tokens.length === 0 ? (
+        <div style={{ background: C.white, borderRadius: 16, padding: "48px 24px", textAlign: "center", border: `1px solid ${C.gray200}` }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🎫</div>
+          <div style={{ fontWeight: 700, fontSize: 16, color: C.navy, marginBottom: 8 }}>No tokens today</div>
+          <div style={{ color: C.gray400, fontSize: 13, marginBottom: 20 }}>Tokens are auto-generated from today's appointments</div>
+          <button onClick={() => setShowWalkIn(true)}
+            style={{ padding: "11px 24px", background: `linear-gradient(135deg,${C.teal},${C.tealDark})`, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            + Add Walk-in Patient
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Group by status */}
+          {["called", "waiting", "completed", "skipped"].map(status => {
+            const group = tokens.filter(t => t.tokenStatus === status);
+            if (group.length === 0) return null;
+            const labels = { called: "📢 Currently Called", waiting: "⏳ Waiting", completed: "✅ Completed", skipped: "⏭ Skipped" };
+            return (
+              <div key={status}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.gray400, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, marginTop: 4 }}>
+                  {labels[status]} ({group.length})
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {group.map(token => (
+                    <TokenCard key={token.id} token={token}
+                      onCall={t => updateTokenStatus(t, "called")}
+                      onComplete={t => updateTokenStatus(t, "completed")}
+                      onSkip={t => updateTokenStatus(t, "skipped")} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Walk-in Modal */}
+      {showWalkIn && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: C.white, borderRadius: 18, padding: 32, width: "100%", maxWidth: 420, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", animation: "fadeUp 0.3s ease-out" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: C.navy }}>🚶 Walk-in Patient</div>
+                <div style={{ fontSize: 12, color: C.gray400, marginTop: 2 }}>Issue Token #{tokens.length + 1}</div>
+              </div>
+              <button onClick={() => setShowWalkIn(false)} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: C.gray400 }}>×</button>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: C.gray600, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" }}>Patient Name *</label>
+              <input value={walkInName} onChange={e => setWalkInName(e.target.value)} placeholder="e.g. Muhammad Ali"
+                style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", border: `2px solid ${C.gray200}`, borderRadius: 10, fontSize: 14, fontFamily: "inherit", outline: "none" }}
+                onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.gray200} />
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: C.gray600, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" }}>Phone <span style={{ color: C.gray400, fontWeight: 400 }}>(optional)</span></label>
+              <input value={walkInPhone} onChange={e => setWalkInPhone(e.target.value)} placeholder="+92 300 1234567"
+                style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", border: `2px solid ${C.gray200}`, borderRadius: 10, fontSize: 14, fontFamily: "inherit", outline: "none" }}
+                onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.gray200} />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: C.gray600, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" }}>Reason <span style={{ color: C.gray400, fontWeight: 400 }}>(optional)</span></label>
+              <input value={walkInReason} onChange={e => setWalkInReason(e.target.value)} placeholder="e.g. Fever, checkup, follow-up"
+                style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", border: `2px solid ${C.gray200}`, borderRadius: 10, fontSize: 14, fontFamily: "inherit", outline: "none" }}
+                onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.gray200} />
+            </div>
+
+            {/* Preview token */}
+            <div style={{ background: C.navy, borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 12, background: C.teal, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.7)", fontWeight: 700 }}>TOKEN</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#fff" }}>#{tokens.length + 1}</div>
+              </div>
+              <div>
+                <div style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>{walkInName || "Patient Name"}</div>
+                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>🚶 Walk-in · {new Date().toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}</div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setShowWalkIn(false)}
+                style={{ flex: 1, padding: "12px", background: C.gray100, color: C.gray600, border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                Cancel
+              </button>
+              <button onClick={addWalkIn} disabled={!walkInName.trim()}
+                style={{ flex: 2, padding: "12px", background: walkInName.trim() ? `linear-gradient(135deg,${C.teal},${C.tealDark})` : C.gray200, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: walkInName.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+                🎫 Issue Token #{tokens.length + 1}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
