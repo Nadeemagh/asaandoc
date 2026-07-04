@@ -179,6 +179,107 @@ export function PromoBanner({ onCta }) {
   );
 }
 
+// ─── SIDEBAR PROMO (vertical ad box for right rail) ─────────
+export function SidebarPromo({ onCta }) {
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => setIndex((i) => (i + 1) % PROMOS.length), 6000);
+    return () => clearInterval(t);
+  }, [paused]);
+
+  const promo = PROMOS[index];
+
+  return (
+    <div
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      style={{
+        borderRadius: 18,
+        overflow: "hidden",
+        boxShadow: "0 8px 24px rgba(27,58,92,0.15)",
+      }}
+    >
+      <div
+        key={promo.id}
+        style={{
+          background: promo.bg,
+          padding: "28px 22px",
+          minHeight: 320,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          textAlign: "center",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <style>{`@keyframes promoFadeIn2{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}`}</style>
+        <div style={{ position: "absolute", right: -20, bottom: -20, fontSize: 140, opacity: 0.06, pointerEvents: "none" }}>
+          {promo.icon}
+        </div>
+
+        <span
+          style={{
+            display: "inline-block", fontSize: 10, fontWeight: 800, letterSpacing: "0.06em",
+            color: "#fff", background: promo.tagColor, padding: "3px 10px", borderRadius: 20, marginBottom: 16,
+            position: "relative", zIndex: 1,
+          }}
+        >
+          {promo.tag}
+        </span>
+
+        <div
+          style={{
+            width: 64, height: 64, borderRadius: 16, marginBottom: 16,
+            background: "rgba(255,255,255,0.12)", display: "flex",
+            alignItems: "center", justifyContent: "center", fontSize: 32,
+            position: "relative", zIndex: 1,
+          }}
+        >
+          {promo.icon}
+        </div>
+
+        <div style={{ fontSize: 17, fontWeight: 800, color: "#fff", lineHeight: 1.3, marginBottom: 8, position: "relative", zIndex: 1 }}>
+          {promo.title}
+        </div>
+        <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.65)", marginBottom: 20, position: "relative", zIndex: 1 }}>
+          {promo.desc}
+        </div>
+
+        <button
+          onClick={() => onCta && onCta(promo.id)}
+          style={{
+            padding: "10px 22px", borderRadius: 10, border: "none",
+            background: promo.accent, color: "#fff", fontWeight: 700, fontSize: 13,
+            cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+            boxShadow: `0 4px 14px ${promo.accent}55`, position: "relative", zIndex: 1,
+          }}
+        >
+          {promo.cta} →
+        </button>
+      </div>
+
+      {/* dots */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 0", background: "rgba(27,58,92,0.04)" }}>
+        {PROMOS.map((p, i) => (
+          <button
+            key={p.id}
+            onClick={() => setIndex(i)}
+            aria-label={`Go to slide ${i + 1}`}
+            style={{
+              width: i === index ? 18 : 7, height: 7, borderRadius: 6, border: "none", cursor: "pointer",
+              background: i === index ? T.primary : "#cbd5e1", transition: "all 0.25s", padding: 0,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── MEMBERSHIP PLANS ───────────────────────────────────────
 // Static plan definitions. Wire up `onSelectPlan` to your booking/payment flow later.
 const PLANS = [
@@ -314,4 +415,3 @@ export function MembershipPlans({ currentPlan = "free", onSelectPlan }) {
     </div>
   );
 }
-
