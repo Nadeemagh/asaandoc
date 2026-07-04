@@ -891,12 +891,12 @@ export default function PatientPortal() {
                 />
               </div>
             )}
-          </>
-        )}
 
-        {/* MY PROFILE */}
-        {view==="profile"&&(
-          <ProfileTab user={user} profile={profile} showToast={showToast}/>
+            {/* MY PROFILE */}
+            {view==="profile"&&(
+              <ProfileTab user={user} profile={profile} showToast={showToast}/>
+            )}
+          </>
         )}
       </div>
       {toast&&<Toast msg={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
