@@ -317,7 +317,20 @@ function MyPrescriptions({ user, profile }) {
 // ── Main Patient Portal ───────────────────────────────────────
 export default function PatientPortal() {
   const { user, profile } = useAuth();
-  const [view, setView] = useState("home");
+  const [urdu, setUrdu] = useState(false);
+
+  const tr = {
+    home:      urdu ? "گھر"           : "Home",
+    doctors:   urdu ? "ڈاکٹر"         : "Doctors",
+    myAppts:   urdu ? "میری ملاقاتیں" : "My Appointments",
+    myRx:      urdu ? "نسخہ"          : "My Prescriptions",
+    symptoms:  urdu ? "علامات"        : "Symptom Check",
+    profile:   urdu ? "پروفائل"       : "My Profile",
+    signOut:   urdu ? "لاگ آوٹ"       : "Sign Out",
+    welcome:   urdu ? "خوش آمدید"     : "Welcome back",
+    tagline:   urdu ? "صحت کا آسان راستہ" : "Your Health, Our Priority 💙",
+    bookBtn:   urdu ? "ملاقات بک کریں" : "Book an Appointment →",
+  };
   const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -419,7 +432,7 @@ export default function PatientPortal() {
             <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11 }}>Patient Portal</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            {[["home","🏠","Home"],["browse","🔍","Doctors"],["myappts","📋","My Appointments"],["prescriptions","💊","My Prescriptions"],["symptoms","🤖","Symptom Check"],["profile","👤","My Profile"]].map(([v,icon,label])=>(
+            {[["home","🏠",tr.home],["browse","🔍",tr.doctors],["myappts","📋",tr.myAppts],["prescriptions","💊",tr.myRx],["symptoms","🤖",tr.symptoms],["profile","👤",tr.profile]].map(([v,icon,label])=>(
               <button key={v} onClick={()=>setView(v)}
                 style={{ padding:"7px 12px", borderRadius:8, border:"none", cursor:"pointer", fontSize:13,
                   fontWeight:600, background:view===v?"rgba(255,255,255,0.2)":"transparent",
@@ -427,10 +440,13 @@ export default function PatientPortal() {
                 <span>{icon}</span> <span style={{ display:window.innerWidth>640?"inline":"none" }}>{label}</span>
               </button>
             ))}
+            <button onClick={()=>setUrdu(u=>!u)}
+              style={{ padding:"7px 12px", borderRadius:8, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.8)", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+              {urdu ? "EN" : "اردو"}
+            </button>
             <button onClick={logoutUser}
-              style={{ padding:"7px 12px", borderRadius:8, border:"1.5px solid rgba(255,255,255,0.3)",
-                background:"transparent", color:"rgba(255,255,255,0.75)", fontSize:12, fontWeight:600, cursor:"pointer" }}>
-              Sign Out
+              style={{ padding:"7px 12px", borderRadius:8, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.75)", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+              {tr.signOut}
             </button>
           </div>
         </div>
@@ -445,13 +461,13 @@ export default function PatientPortal() {
                 <div style={{ background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`, borderRadius:20,
                   padding:"32px 28px", color:"#fff", marginBottom:24, position:"relative", overflow:"hidden" }}>
                   <div style={{ position:"absolute", right:-10, top:-10, fontSize:110, opacity:0.06 }}>🏥</div>
-                  <div style={{ fontSize:13, opacity:0.75, marginBottom:6 }}>Welcome back, {profile?.name||user.displayName||"Patient"} 👋</div>
-                  <h1 style={{ margin:"0 0 8px", fontSize:24, fontWeight:900, lineHeight:1.2 }}>Your Health, Our Priority 💙</h1>
+                  <div style={{ fontSize:13, opacity:0.75, marginBottom:6 }}>{tr.welcome}, {profile?.name||user.displayName||"Patient"} 👋</div>
+                  <h1 style={{ margin:"0 0 8px", fontSize:24, fontWeight:900, lineHeight:1.2 }}>{tr.tagline}</h1>
                   <p style={{ margin:"0 0 4px", opacity:0.7, fontSize:13, fontFamily:"serif" }}>صحت کا آسان راستہ</p>
                   <p style={{ margin:"0 0 20px", opacity:0.8, fontSize:13 }}>Book consultations with top specialists across Pakistan.</p>
                   <button onClick={()=>setView("browse")}
                     style={{ padding:"12px 24px", background:"#fff", color:T.primary, border:"none", borderRadius:10, fontWeight:700, fontSize:14, cursor:"pointer" }}>
-                    Book an Appointment →
+                    {tr.bookBtn}
                   </button>
                 </div>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:24 }}>
