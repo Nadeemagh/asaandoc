@@ -7,7 +7,7 @@ import { logoutUser } from "../firebase/services";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
 import SymptomChecker from "../components/SymptomChecker";
-import { PromoBanner, MembershipPlans } from "../components/PromotionsSection";
+import { PromoBanner, MembershipPlans, SidebarPromo } from "../components/PromotionsSection";
 
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const today = new Date();
@@ -454,12 +454,21 @@ export default function PatientPortal() {
         </div>
       </div>
 
-      <div style={{ maxWidth:960, margin:"0 auto", padding:"24px 16px" }}>
+      <div style={{ maxWidth:view==="home"?1180:960, margin:"0 auto", padding:"24px 16px" }}>
         {loadingData ? <Spinner /> : (
           <>
             {/* HOME */}
             {view==="home"&&(
-              <div>
+              <div className="home-layout">
+                <style>{`
+                  .home-layout{display:block}
+                  .home-sidebar{display:none}
+                  @media (min-width:980px){
+                    .home-layout{display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start}
+                    .home-sidebar{display:block;position:sticky;top:76px}
+                  }
+                `}</style>
+                <div className="home-main">
                 <div style={{ background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`, borderRadius:20,
                   padding:"32px 28px", color:"#fff", marginBottom:24, position:"relative", overflow:"hidden" }}>
                   <div style={{ position:"absolute", right:-10, top:-10, fontSize:110, opacity:0.06 }}>🏥</div>
@@ -544,6 +553,14 @@ export default function PatientPortal() {
                     })}
                   </div>
                 )}
+                </div>
+
+                <aside className="home-sidebar">
+                  <SidebarPromo onCta={(id) => {
+                    if (id === "membership") setView("membership");
+                    else if (id === "video" || id === "labtest20") setView("browse");
+                  }}/>
+                </aside>
               </div>
             )}
 
