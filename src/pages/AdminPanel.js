@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { collection, getDocs, query, orderBy, updateDoc, doc, deleteDoc, where } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { logoutUser } from "../firebase/services";
+import AdminPromotionsManager from "../components/AdminPromotionsManager";
 
 const T = {
   primary:"#2ABFBF", primaryDark:"#1a9999", primaryLight:"#e8f9f9",
