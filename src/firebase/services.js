@@ -288,3 +288,72 @@ export const updateDoctorData = async (doctorId, data) => {
     throw e;
   }
 };
+// ─────────────────────────────────────────────────────────────
+// ADD THESE FUNCTIONS TO: src/firebase/services.js
+// (Paste at the bottom of the file. Make sure these imports exist
+//  at the top of services.js — add any that are missing:)
+//
+// import { collection, doc, getDocs, addDoc, setDoc, deleteDoc, query, orderBy } from "firebase/firestore";
+// import { db } from "./config";
+// ─────────────────────────────────────────────────────────────
+
+// ═══════════════════ PROMOTIONS (banner ads) ═══════════════════
+
+// Patient side — only active promos, in order
+export const getPromotions = async () => {
+  const snap = await getDocs(query(collection(db, "promotions"), orderBy("order", "asc")));
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(p => p.active !== false);
+};
+
+// Admin side — all promos (including inactive), in order
+export const getAllPromotionsAdmin = async () => {
+  const snap = await getDocs(query(collection(db, "promotions"), orderBy("order", "asc")));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+// Create or update a promo. Pass an `id` to update, omit to create new.
+export const savePromotion = async (promo) => {
+  const { id, ...data } = promo;
+  if (id) {
+    await setDoc(doc(db, "promotions", id), data, { merge: true });
+    return id;
+  } else {
+    const ref = await addDoc(collection(db, "promotions"), data);
+    return ref.id;
+  }
+};
+
+export const deletePromotion = async (id) => {
+  await deleteDoc(doc(db, "promotions", id));
+};
+
+// ═══════════════════ MEMBERSHIP PLANS ═══════════════════
+
+export const getMembershipPlans = async () => {
+  const snap = await getDocs(query(collection(db, "membershipPlans"), orderBy("order", "asc")));
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(p => p.active !== false);
+};
+
+export const getAllMembershipPlansAdmin = async () => {
+  const snap = await getDocs(query(collection(db, "membershipPlans"), orderBy("order", "asc")));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+export const saveMembershipPlan = async (plan) => {
+  const { id, ...data } = plan;
+  if (id) {
+    await setDoc(doc(db, "membershipPlans", id), data, { merge: true });
+    return id;
+  } else {
+    const ref = await addDoc(collection(db, "membershipPlans"), data);
+    return ref.id;
+  }
+};
+
+export const deleteMembershipPlan = async (id) => {
+  await deleteDoc(doc(db, "membershipPlans", id));
+};
