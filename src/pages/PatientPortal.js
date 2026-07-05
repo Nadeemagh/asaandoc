@@ -326,6 +326,7 @@ export default function PatientPortal() {
     myAppts:   urdu ? "میری ملاقاتیں" : "My Appointments",
     myRx:      urdu ? "نسخہ"          : "My Prescriptions",
     symptoms:  urdu ? "علامات"        : "Symptom Check",
+    membership: urdu ? "ممبرشپ"       : "Membership",
     profile:   urdu ? "پروفائل"       : "My Profile",
     signOut:   urdu ? "لاگ آوٹ"       : "Sign Out",
     welcome:   urdu ? "خوش آمدید"     : "Welcome back",
@@ -434,7 +435,7 @@ export default function PatientPortal() {
             <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11 }}>Patient Portal</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            {[["home","🏠",tr.home],["browse","🔍",tr.doctors],["myappts","📋",tr.myAppts],["prescriptions","💊",tr.myRx],["symptoms","🤖",tr.symptoms],["profile","👤",tr.profile]].map(([v,icon,label])=>(
+            {[["home","🏠",tr.home],["browse","🔍",tr.doctors],["myappts","📋",tr.myAppts],["prescriptions","💊",tr.myRx],["symptoms","🤖",tr.symptoms],["membership","👑",tr.membership],["profile","👤",tr.profile]].map(([v,icon,label])=>(
               <button key={v} onClick={()=>setView(v)}
                 style={{ padding:"7px 12px", borderRadius:8, border:"none", cursor:"pointer", fontSize:13,
                   fontWeight:600, background:view===v?"rgba(255,255,255,0.2)":"transparent",
