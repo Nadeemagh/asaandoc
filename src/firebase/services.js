@@ -297,7 +297,10 @@ const sortByOrder = (arr) => [...arr].sort((a, b) => (a.order ?? 0) - (b.order ?
 export const getPromotions = async () => {
   const snap = await getDocs(collection(db, "promotions"));
   const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  return sortByOrder(all.filter(p => p.active !== false));
+  console.log("[promotions] raw docs from Firestore:", all);
+  const active = all.filter(p => p.active !== false);
+  console.log("[promotions] active after filter:", active);
+  return sortByOrder(active);
 };
 
 // Admin side — all promos (including inactive), in order
