@@ -1,7 +1,7 @@
 // src/firebase/services.js
 import {
   collection, doc, addDoc, updateDoc, getDocs, deleteDoc,
-  query, where, serverTimestamp, setDoc, getDoc,
+  query, where, orderBy, serverTimestamp, setDoc, getDoc,
 } from "firebase/firestore";
 import {
   createUserWithEmailAndPassword,
@@ -288,14 +288,6 @@ export const updateDoctorData = async (doctorId, data) => {
     throw e;
   }
 };
-// ─────────────────────────────────────────────────────────────
-// ADD THESE FUNCTIONS TO: src/firebase/services.js
-// (Paste at the bottom of the file. Make sure these imports exist
-//  at the top of services.js — add any that are missing:)
-//
-// import { collection, doc, getDocs, addDoc, setDoc, deleteDoc, query, orderBy } from "firebase/firestore";
-// import { db } from "./config";
-// ─────────────────────────────────────────────────────────────
 
 // ═══════════════════ PROMOTIONS (banner ads) ═══════════════════
 
