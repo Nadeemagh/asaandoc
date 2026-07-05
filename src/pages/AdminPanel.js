@@ -96,6 +96,7 @@ export default function AdminPanel() {
     ["patients","👥","Patients"],
     ["appointments","📅","Appointments"],
     ["revenue","💰","Revenue"],
+    ["promotions","📣","Promotions"],
   ];
 
   if (loading) return (
@@ -448,6 +449,13 @@ export default function AdminPanel() {
                   </tbody>
                 </table>
               </Card>
+            </div>
+          )}
+
+          {/* ── PROMOTIONS ── */}
+          {view==="promotions"&&(
+            <div style={{animation:"fadeUp 0.4s ease-out"}}>
+              <AdminPromotionsManager/>
             </div>
           )}
 
