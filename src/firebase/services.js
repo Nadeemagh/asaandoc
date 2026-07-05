@@ -291,18 +291,19 @@ export const updateDoctorData = async (doctorId, data) => {
 
 // ═══════════════════ PROMOTIONS (banner ads) ═══════════════════
 
+const sortByOrder = (arr) => [...arr].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
 // Patient side — only active promos, in order
 export const getPromotions = async () => {
-  const snap = await getDocs(query(collection(db, "promotions"), orderBy("order", "asc")));
-  return snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .filter(p => p.active !== false);
+  const snap = await getDocs(collection(db, "promotions"));
+  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return sortByOrder(all.filter(p => p.active !== false));
 };
 
 // Admin side — all promos (including inactive), in order
 export const getAllPromotionsAdmin = async () => {
-  const snap = await getDocs(query(collection(db, "promotions"), orderBy("order", "asc")));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const snap = await getDocs(collection(db, "promotions"));
+  return sortByOrder(snap.docs.map(d => ({ id: d.id, ...d.data() })));
 };
 
 // Create or update a promo. Pass an `id` to update, omit to create new.
@@ -324,15 +325,14 @@ export const deletePromotion = async (id) => {
 // ═══════════════════ MEMBERSHIP PLANS ═══════════════════
 
 export const getMembershipPlans = async () => {
-  const snap = await getDocs(query(collection(db, "membershipPlans"), orderBy("order", "asc")));
-  return snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .filter(p => p.active !== false);
+  const snap = await getDocs(collection(db, "membershipPlans"));
+  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return sortByOrder(all.filter(p => p.active !== false));
 };
 
 export const getAllMembershipPlansAdmin = async () => {
-  const snap = await getDocs(query(collection(db, "membershipPlans"), orderBy("order", "asc")));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const snap = await getDocs(collection(db, "membershipPlans"));
+  return sortByOrder(snap.docs.map(d => ({ id: d.id, ...d.data() })));
 };
 
 export const saveMembershipPlan = async (plan) => {
