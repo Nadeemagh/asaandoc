@@ -4,9 +4,8 @@ import AuthPage from "./pages/AuthPage";
 import PatientPortal from "./pages/PatientPortal";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import InstallPrompt from "./components/InstallPrompt";
-
+import DoctorProfilePage from "./pages/DoctorProfilePage";
 const ADMIN_EMAILS = ["admin@asaandoc.com"];
-
 function AdminPanelLoader() {
   try {
     const AdminPanel = require("./pages/AdminPanel").default;
@@ -21,7 +20,6 @@ function AdminPanelLoader() {
     );
   }
 }
-
 // ── Full screen loading spinner ───────────────────────────────
 function LoadingScreen() {
   return (
@@ -51,14 +49,21 @@ function LoadingScreen() {
     </div>
   );
 }
-
 export default function App() {
   const { user, profile, loading } = useAuth();
+
+  // ── PUBLIC DOCTOR PROFILE (no login required) ──────────────
+  // Matches /doctor/dr-name-specialty-abcd — checked before any auth
+  // logic so it works whether or not anyone is signed in.
+  const path = window.location.pathname;
+  const doctorMatch = path.match(/^\/doctor\/([^/]+)\/?$/);
+  if (doctorMatch) {
+    return <DoctorProfilePage slug={doctorMatch[1]} />;
+  }
 
   // ── Show loading screen until role is fully resolved ──────
   // This prevents ANY flash of wrong portal
   if (loading) return <LoadingScreen />;
-
   // ── Not logged in ─────────────────────────────────────────
   if (!user) return (
     <>
@@ -66,12 +71,10 @@ export default function App() {
       <InstallPrompt />
     </>
   );
-
   // ── Admin ─────────────────────────────────────────────────
   if (ADMIN_EMAILS.includes(user.email?.toLowerCase().trim())) {
     return <AdminPanelLoader />;
   }
-
   // ── Doctor ────────────────────────────────────────────────
   if (profile?.role === "doctor") return (
     <>
@@ -79,7 +82,6 @@ export default function App() {
       <InstallPrompt />
     </>
   );
-
   // ── Patient (default) ─────────────────────────────────────
   return (
     <>
