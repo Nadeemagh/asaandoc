@@ -35,6 +35,7 @@ export const registerUser = async ({ email, password, name, role, phone = "", do
   if (role === "doctor") {
     const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
     const doctorRef = doc(collection(db, "doctors"));
+    const slug = generateDoctorSlug({ id: doctorRef.id, name, specialty: "General Practitioner" });
     await setDoc(doctorRef, {
       name,
       email,
@@ -46,6 +47,7 @@ export const registerUser = async ({ email, password, name, role, phone = "", do
       holidays: [],
       services: "",
       qualifications: "",
+      slug,
       createdAt: serverTimestamp(),
     });
     finalDoctorId = doctorRef.id;
@@ -287,6 +289,91 @@ export const updateDoctorData = async (doctorId, data) => {
     console.error("updateDoctorData error:", e);
     throw e;
   }
+};
+
+// ─── PUBLIC DOCTOR PROFILE SLUGS ───────────────────────────────────
+// Turns "Dr. Javaid Iqbal" into "dr-javaid-iqbal" — used to build
+// human-readable public URLs like /doctor/dr-javaid-iqbal-cardiologist-a1b2
+export const slugify = (str) =>
+  (str || "")
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-+|-+$)/g, "");
+
+// Builds a slug from name + specialty + a short unique suffix from the doc id,
+// so two doctors with the same name never collide.
+export const generateDoctorSlug = (doctor) => {
+  const base = slugify(`${doctor.name || "doctor"}-${doctor.specialty || ""}`);
+  const suffix = (doctor.id || "").slice(-4) || Math.random().toString(36).slice(-4);
+  return `${base}-${suffix}`;
+};
+
+// Look up a doctor by their public slug (used by the public profile page).
+export const getDoctorBySlug = async (slug) => {
+  try {
+    const q = query(collection(db, "doctors"), where("slug", "==", slug));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return { id: d.id, ...d.data() };
+  } catch (e) {
+    console.error("getDoctorBySlug error:", e);
+    return null;
+  }
+};
+
+// Makes sure a specific doctor has a slug, generating + saving one if missing.
+// Returns the slug either way. Safe to call repeatedly.
+export const ensureDoctorSlug = async (doctorLike) => {
+  if (doctorLike.slug) return doctorLike.slug;
+  const slug = generateDoctorSlug(doctorLike);
+  await updateDoc(doc(db, "doctors", doctorLike.id), { slug });
+  return slug;
+};
+
+// Bulk-fills slugs for any existing doctors that don't have one yet.
+// Call this once from the Admin Panel after adding this feature.
+export const backfillDoctorSlugs = async () => {
+  const snap = await getDocs(collection(db, "doctors"));
+  const updated = [];
+  for (const d of snap.docs) {
+    const data = { id: d.id, ...d.data() };
+    if (!data.slug) {
+      const slug = generateDoctorSlug(data);
+      await updateDoc(doc(db, "doctors", d.id), { slug });
+      updated.push({ id: d.id, name: data.name, slug });
+    }
+  }
+  return updated;
+};
+
+// ─── BACKUP & RESTORE ───────────────────────────────────────────────
+// Generic helpers: works with any collection, since backup/restore
+// just needs { id, ...data } shaped documents either way.
+
+export const getAllDocsRaw = async (collectionName) => {
+  const snap = await getDocs(collection(db, collectionName));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+// Overwrites (or creates) each document at its original id.
+// Returns a per-collection success/failure count so the UI can report it.
+export const restoreCollectionDocs = async (collectionName, docsArray) => {
+  let success = 0, failed = 0;
+  for (const item of docsArray) {
+    const { id, ...data } = item;
+    if (!id) { failed++; continue; }
+    try {
+      await setDoc(doc(db, collectionName, id), data);
+      success++;
+    } catch (e) {
+      console.error(`Restore failed for ${collectionName}/${id}:`, e);
+      failed++;
+    }
+  }
+  return { collection: collectionName, success, failed };
 };
 
 // ═══════════════════ PROMOTIONS (banner ads) ═══════════════════
