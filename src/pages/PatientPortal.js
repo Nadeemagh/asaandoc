@@ -8,6 +8,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
 import SymptomChecker from "../components/SymptomChecker";
 import { MembershipPlans, SidebarPromo } from "../components/PromotionsSection";
+import { PENDING_BOOKING_KEY } from "./DoctorProfilePage";
 
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const today = new Date();
@@ -359,6 +360,18 @@ export default function PatientPortal() {
   }, [user.uid]);
 
   useEffect(()=>{ loadData(); },[loadData]);
+
+  // If the patient landed here after clicking "Book Appointment" on a
+  // public doctor profile page (/doctor/:slug), jump straight into
+  // booking that doctor once the doctor list has loaded.
+  useEffect(() => {
+    if (loadingData || doctors.length === 0) return;
+    const pendingId = localStorage.getItem(PENDING_BOOKING_KEY);
+    if (!pendingId) return;
+    const target = doctors.find(d => d.id === pendingId);
+    localStorage.removeItem(PENDING_BOOKING_KEY);
+    if (target) startBooking(target);
+  }, [loadingData, doctors]);
 
   const specialties = ["All", ...new Set(doctors.map(d=>d.specialty))];
   const filtered = filterSpec==="All" ? doctors : doctors.filter(d=>d.specialty===filterSpec);
