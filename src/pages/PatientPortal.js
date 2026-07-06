@@ -363,14 +363,23 @@ export default function PatientPortal() {
 
   // If the patient landed here after clicking "Book Appointment" on a
   // public doctor profile page (/doctor/:slug), jump straight into
-  // booking that doctor once the doctor list has loaded.
+  // booking that doctor once the doctor list has loaded. If that doctor
+  // only has one clinic, skip clinic selection entirely and go straight
+  // to picking a date/time — there's nothing to choose between.
   useEffect(() => {
     if (loadingData || doctors.length === 0) return;
     const pendingId = localStorage.getItem(PENDING_BOOKING_KEY);
     if (!pendingId) return;
     const target = doctors.find(d => d.id === pendingId);
     localStorage.removeItem(PENDING_BOOKING_KEY);
-    if (target) startBooking(target);
+    if (target) {
+      startBooking(target);
+      const clinics = getDoctorClinics(target);
+      if (clinics.length === 1) {
+        setSelectedClinic(clinics[0]);
+        setBookStep(2);
+      }
+    }
   }, [loadingData, doctors]);
 
   const specialties = ["All", ...new Set(doctors.map(d=>d.specialty))];
