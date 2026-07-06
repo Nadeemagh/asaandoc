@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs, query, orderBy, updateDoc, doc, deleteDoc, where } from "firebase/firestore";
 import { db } from "../firebase/config";
-import { logoutUser } from "../firebase/services";
+import { logoutUser, backfillDoctorSlugs, ensureDoctorSlug } from "../firebase/services";
 import AdminPromotionsManager from "../components/AdminPromotionsManager";
+import AdminBackupRestore from "../components/AdminBackupRestore";
 
 const T = {
   primary:"#2ABFBF", primaryDark:"#1a9999", primaryLight:"#e8f9f9",
@@ -82,6 +83,40 @@ export default function AdminPanel() {
     showToast(!current?"✅ Doctor activated":"⏸️ Doctor deactivated");
   };
 
+  const copyPublicLink = async (doc) => {
+    try {
+      const slug = await ensureDoctorSlug(doc);
+      if (!doc.slug) {
+        setDoctors(ds => ds.map(d => d.id === doc.id ? { ...d, slug } : d));
+      }
+      const url = `${window.location.origin}/doctor/${slug}`;
+      await navigator.clipboard.writeText(url);
+      showToast("🔗 Public profile link copied!");
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to copy link.");
+    }
+  };
+
+  const [backfilling, setBackfilling] = useState(false);
+  const handleBackfillSlugs = async () => {
+    setBackfilling(true);
+    try {
+      const updated = await backfillDoctorSlugs();
+      if (updated.length > 0) {
+        setDoctors(ds => ds.map(d => {
+          const match = updated.find(u => u.id === d.id);
+          return match ? { ...d, slug: match.slug } : d;
+        }));
+      }
+      showToast(`✅ Generated links for ${updated.length} doctor(s).`);
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to generate links.");
+    }
+    setBackfilling(false);
+  };
+
   // Stats
   const totalRevenue = appointments.filter(a=>a.status==="completed").reduce((s,a)=>s+Number(a.clinicFee||0),0);
   const todayStr = new Date().toISOString().split("T")[0];
@@ -97,6 +132,7 @@ export default function AdminPanel() {
     ["appointments","📅","Appointments"],
     ["revenue","💰","Revenue"],
     ["promotions","📣","Promotions"],
+    ["backup","💾","Backup"],
   ];
 
   if (loading) return (
@@ -299,6 +335,10 @@ export default function AdminPanel() {
                 <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search doctors..."
                   style={{flex:1,padding:"10px 16px",border:`1.5px solid ${T.border}`,borderRadius:10,fontSize:14,fontFamily:"inherit",outline:"none"}}
                   onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor=T.border}/>
+                <button onClick={handleBackfillSlugs} disabled={backfilling}
+                  style={{padding:"10px 16px",background:T.primaryLight,color:T.primary,border:`1.5px solid ${T.primary}`,borderRadius:10,fontSize:12,fontWeight:700,cursor:backfilling?"not-allowed":"pointer",whiteSpace:"nowrap",fontFamily:"inherit"}}>
+                  {backfilling?"Generating…":"🔗 Generate Missing Links"}
+                </button>
                 <div style={{color:T.muted,fontSize:13,whiteSpace:"nowrap"}}>{doctors.length} total doctors</div>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -320,8 +360,13 @@ export default function AdminPanel() {
                         </div>
                         <div style={{fontSize:12,color:T.primary,fontWeight:600}}>{doc.specialty}</div>
                         <div style={{fontSize:11,color:T.muted}}>⏳ {doc.exp} yrs · PMC: {doc.pmcNo||doc.license||"—"} · {(doc.clinics||[]).length} clinic(s)</div>
+                        {doc.slug && <div style={{fontSize:11,color:T.muted,marginTop:2}}>🔗 /doctor/{doc.slug}</div>}
                       </div>
                       <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>copyPublicLink(doc)}
+                          style={{padding:"8px 14px",background:T.primaryLight,color:T.primary,border:`1.5px solid ${T.primary}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                          🔗 Copy Link
+                        </button>
                         <button onClick={()=>toggleDoctorStatus(doc.id,doc.active!==false)}
                           style={{padding:"8px 14px",background:doc.active===false?"#f0fdf4":"#fef2f2",color:doc.active===false?T.accent:T.red,border:`1.5px solid ${doc.active===false?T.accent:T.red}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                           {doc.active===false?"✅ Activate":"⏸️ Deactivate"}
@@ -456,6 +501,13 @@ export default function AdminPanel() {
           {view==="promotions"&&(
             <div style={{animation:"fadeUp 0.4s ease-out"}}>
               <AdminPromotionsManager/>
+            </div>
+          )}
+
+          {/* ── BACKUP & RESTORE ── */}
+          {view==="backup"&&(
+            <div style={{animation:"fadeUp 0.4s ease-out"}}>
+              <AdminBackupRestore/>
             </div>
           )}
 
