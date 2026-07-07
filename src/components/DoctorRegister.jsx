@@ -13,7 +13,7 @@ const C = {
 };
 
 const SPECIALTIES = [
-  "General Physician","Cardiologist","Dermatologist","Endocrinologist",
+  "Clinical Psychologist","General Physician","Cardiologist","Dermatologist","Endocrinologist",
   "Gastroenterologist","Gynecologist","Neurologist","Nutritionist & Dietitian",
   "Ophthalmologist","Orthopedic","Pediatrician","Psychiatrist",
   "Pulmonologist","Urologist","ENT Specialist","Diabetologist",
