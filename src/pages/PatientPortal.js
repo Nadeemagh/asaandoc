@@ -9,6 +9,7 @@ import { db } from "../firebase/config";
 import SymptomChecker from "../components/SymptomChecker";
 import { MembershipPlans, SidebarPromo } from "../components/PromotionsSection";
 import { PENDING_BOOKING_KEY } from "./DoctorProfilePage";
+import VideoCallModal from "../components/VideoCallModal";
 
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const today = new Date();
@@ -345,6 +346,7 @@ export default function PatientPortal() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
   const [receiptModal, setReceiptModal] = useState(null);
+  const [videoCall, setVideoCall] = useState(null); // holds the appointment being joined, or null
   const [form, setForm] = useState({ date:"", slot:"", reason:"", receipt:"", receiptName:"" });
 
   const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
@@ -900,6 +902,12 @@ export default function PatientPortal() {
                                   <div style={{ fontSize:18, fontWeight:900, color:"#2ABFBF" }}>#{a.tokenNumber}</div>
                                 </div>
                               )}
+                              {isOnline && a.status==="confirmed" && a.videoRoomId && (
+                                <button onClick={()=>setVideoCall(a)}
+                                  style={{ marginTop:8, display:"inline-flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:10, background:"linear-gradient(135deg,#16a34a,#15803d)", color:"#fff", border:"none", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                                  🎥 Join Video Call
+                                </button>
+                              )}
                               {a.paymentReceipt&&(
                                 <div style={{ marginTop:8, padding:"8px 12px", background:"#f0fdf4", borderRadius:8, border:"1.5px solid #86efac", display:"inline-flex", alignItems:"center", gap:8 }}>
                                   <span>💳</span>
@@ -951,6 +959,14 @@ export default function PatientPortal() {
         )}
       </div>
       {toast&&<Toast msg={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
+
+      {videoCall && (
+        <VideoCallModal
+          roomId={videoCall.videoRoomId}
+          displayName={profile?.name||user.displayName||"Patient"}
+          onClose={()=>setVideoCall(null)}
+        />
+      )}
 
       {receiptModal&&(
         <div onClick={()=>setReceiptModal(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
