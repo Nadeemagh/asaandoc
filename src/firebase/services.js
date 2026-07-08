@@ -109,8 +109,13 @@ export const getDoctors = async () => {
 
 export const bookAppointment = async (data) => {
   try {
-    const ref = await addDoc(collection(db, "appointments"), {
+    const ref = doc(collection(db, "appointments"));
+    // Give every "Online" appointment its own private video room, tied to
+    // the appointment's own random Firestore ID so it can't be guessed.
+    const videoRoomId = data.type === "Online" ? `asaandoc-${ref.id}` : null;
+    await setDoc(ref, {
       ...data,
+      videoRoomId,
       status: "pending",
       createdAt: serverTimestamp(),
     });
