@@ -170,6 +170,17 @@ export const updateAppointmentStatus = async (appointmentId, status) => {
   }
 };
 
+// For appointments booked before the video feature existed (so they have
+// no videoRoomId saved yet). Generates and saves one on first use, so old
+// "Online" appointments get video calling retroactively without needing
+// a manual backfill step.
+export const ensureAppointmentVideoRoom = async (appointmentId, existingRoomId) => {
+  if (existingRoomId) return existingRoomId;
+  const roomId = `asaandoc-${appointmentId}`;
+  await updateDoc(doc(db, "appointments", appointmentId), { videoRoomId: roomId });
+  return roomId;
+};
+
 export const seedDoctors = async () => { return; };
 
 // ─── DOCTOR SCHEDULE MANAGEMENT ───────────────────────────────────
