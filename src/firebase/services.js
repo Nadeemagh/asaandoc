@@ -181,6 +181,33 @@ export const ensureAppointmentVideoRoom = async (appointmentId, existingRoomId) 
   return roomId;
 };
 
+// Fetches a patient's full prescription history (matches by phone with/without
+// +92 prefix, and by email) — used by the Health Records Vault to build a
+// chronological clinical timeline and vitals trend.
+export const getPrescriptionsForPatient = async (profile, user) => {
+  try {
+    const phone = profile?.phone ? "+92" + profile.phone : "";
+    const phone2 = profile?.phone || "";
+    const email = user?.email || "";
+    const candidates = [phone, phone2, email].filter(Boolean);
+    const results = [];
+    const ids = new Set();
+    for (const val of candidates) {
+      const q = query(collection(db, "prescriptions"), where("phone", "==", val));
+      const snap = await getDocs(q);
+      snap.docs.forEach(d => {
+        if (!ids.has(d.id)) { ids.add(d.id); results.push({ firestoreId: d.id, ...d.data() }); }
+      });
+    }
+    // Chronological ascending — needed so vitals trend comparisons (latest vs previous) work correctly.
+    results.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    return results;
+  } catch (e) {
+    console.error("getPrescriptionsForPatient error:", e);
+    return [];
+  }
+};
+
 export const seedDoctors = async () => { return; };
 
 // ─── DOCTOR SCHEDULE MANAGEMENT ───────────────────────────────────
