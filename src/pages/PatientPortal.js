@@ -1,7 +1,7 @@
 // src/pages/PatientPortal.js
 import { useState, useEffect, useCallback } from "react";
 import { T, Badge, Card, StatCard, Toast, Spinner, inputStyle, labelStyle } from "../components/UI";
-import { getDoctors, bookAppointment, getAppointmentsByPatient, updateAppointmentStatus } from "../firebase/services";
+import { getDoctors, bookAppointment, getAppointmentsByPatient, updateAppointmentStatus, ensureAppointmentVideoRoom } from "../firebase/services";
 import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -902,8 +902,17 @@ export default function PatientPortal() {
                                   <div style={{ fontSize:18, fontWeight:900, color:"#2ABFBF" }}>#{a.tokenNumber}</div>
                                 </div>
                               )}
-                              {isOnline && a.status==="confirmed" && a.videoRoomId && (
-                                <button onClick={()=>setVideoCall(a)}
+                              {isOnline && a.status==="confirmed" && (
+                                <button onClick={async ()=>{
+                                  let roomId = a.videoRoomId;
+                                  if (!roomId) {
+                                    try {
+                                      roomId = await ensureAppointmentVideoRoom(a.id, a.videoRoomId);
+                                      setAppointments(prev=>prev.map(x=>x.id===a.id?{...x,videoRoomId:roomId}:x));
+                                    } catch(e) { console.error(e); showToast("Failed to start video call.","error"); return; }
+                                  }
+                                  setVideoCall({ ...a, videoRoomId: roomId });
+                                }}
                                   style={{ marginTop:8, display:"inline-flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:10, background:"linear-gradient(135deg,#16a34a,#15803d)", color:"#fff", border:"none", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                                   🎥 Join Video Call
                                 </button>
