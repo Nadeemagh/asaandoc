@@ -1,7 +1,7 @@
 // src/pages/DoctorDashboard.js
 import { useState, useEffect, useCallback } from "react";
 import { T, Badge, Card, StatCard, Toast, Spinner } from "../components/UI";
-import { getAppointmentsByDoctor, updateAppointmentStatus, getDoctors, updateDoctorSchedule, updateDoctorProfile, addHoliday, removeHoliday } from "../firebase/services";
+import { getAppointmentsByDoctor, updateAppointmentStatus, getDoctors, updateDoctorSchedule, updateDoctorProfile, addHoliday, removeHoliday, ensureAppointmentVideoRoom } from "../firebase/services";
 import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
@@ -474,6 +474,19 @@ export default function DoctorDashboard() {
     }
   };
 
+  // Handles both appointments that already have a videoRoomId and older
+  // ones booked before the video feature existed (generates one on first use).
+  const handleJoinVideoCall = async (a) => {
+    let roomId = a.videoRoomId;
+    if (!roomId) {
+      try {
+        roomId = await ensureAppointmentVideoRoom(a.id, a.videoRoomId);
+        setAppointments(prev=>prev.map(x=>x.id===a.id?{...x,videoRoomId:roomId}:x));
+      } catch(e) { console.error(e); showToast("Failed to start video call.","error"); return; }
+    }
+    setVideoCall({ ...a, videoRoomId: roomId });
+  };
+
   const todayStr = fmtDate(today);
   const todayAppts = appointments.filter(a=>a.date===todayStr);
   const upcoming = appointments.filter(a=>a.date>todayStr&&a.status!=="cancelled");
@@ -691,8 +704,8 @@ export default function DoctorDashboard() {
                                 <span style={{fontSize:11,color:"#16a34a",fontWeight:600}}>Receipt uploaded</span>
                                 <button onClick={()=>setReceiptModal(a.paymentReceipt)} style={{fontSize:10,color:T.primary,background:"none",border:"none",cursor:"pointer",fontWeight:600,textDecoration:"underline"}}>View</button>
                               </div>}
-                              {a.type==="Online"&&a.status==="confirmed"&&a.videoRoomId&&(
-                                <button onClick={()=>setVideoCall(a)}
+                              {a.type==="Online"&&a.status==="confirmed"&&(
+                                <button onClick={()=>handleJoinVideoCall(a)}
                                   style={{marginTop:6,display:"inline-flex",alignItems:"center",gap:5,padding:"5px 12px",borderRadius:7,background:"linear-gradient(135deg,#16a34a,#15803d)",color:"#fff",border:"none",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                                   🎥 Join Video Call
                                 </button>
@@ -800,8 +813,8 @@ export default function DoctorDashboard() {
                           <div style={{fontSize:11,color:T.muted}}>📧 {a.patientEmail||"—"}</div>
                           {a.clinicName&&<div style={{fontSize:11,color:T.muted}}>🏥 {a.clinicName}</div>}
                           {a.clinicFee>0&&<div style={{fontSize:11,color:T.primary,fontWeight:600}}>PKR {Number(a.clinicFee).toLocaleString()}</div>}
-                          {a.type==="Online"&&a.status==="confirmed"&&a.videoRoomId&&(
-                            <button onClick={()=>setVideoCall(a)}
+                          {a.type==="Online"&&a.status==="confirmed"&&(
+                            <button onClick={()=>handleJoinVideoCall(a)}
                               style={{marginTop:6,display:"inline-flex",alignItems:"center",gap:5,padding:"5px 12px",borderRadius:7,background:"linear-gradient(135deg,#16a34a,#15803d)",color:"#fff",border:"none",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                               🎥 Join Video Call
                             </button>
@@ -870,8 +883,8 @@ export default function DoctorDashboard() {
                               <button onClick={()=>setReceiptModal(a.paymentReceipt)} style={{padding:"5px 12px",background:"#16a34a",color:"#fff",border:"none",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer"}}>👁️ View</button>
                             </div>
                             :a.status!=="cancelled"&&<div style={{marginTop:6,fontSize:11,color:T.muted,fontStyle:"italic"}}>⏳ No receipt yet</div>}
-                          {a.type==="Online"&&a.status==="confirmed"&&a.videoRoomId&&(
-                            <button onClick={()=>setVideoCall(a)}
+                          {a.type==="Online"&&a.status==="confirmed"&&(
+                            <button onClick={()=>handleJoinVideoCall(a)}
                               style={{marginTop:8,display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:8,background:"linear-gradient(135deg,#16a34a,#15803d)",color:"#fff",border:"none",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                               🎥 Join Video Call
                             </button>
