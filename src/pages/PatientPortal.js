@@ -10,6 +10,7 @@ import SymptomChecker from "../components/SymptomChecker";
 import { MembershipPlans, SidebarPromo } from "../components/PromotionsSection";
 import { PENDING_BOOKING_KEY } from "./DoctorProfilePage";
 import VideoCallModal from "../components/VideoCallModal";
+import HealthRecordsVault from "../components/HealthRecordsVault";
 
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const today = new Date();
@@ -327,6 +328,7 @@ export default function PatientPortal() {
     doctors:   urdu ? "ڈاکٹر"         : "Doctors",
     myAppts:   urdu ? "میری ملاقاتیں" : "My Appointments",
     myRx:      urdu ? "نسخہ"          : "My Prescriptions",
+    records:   urdu ? "صحت کا ریکارڈ" : "Health Records",
     symptoms:  urdu ? "علامات"        : "Symptom Check",
     membership: urdu ? "ممبرشپ"       : "Membership",
     profile:   urdu ? "پروفائل"       : "My Profile",
@@ -459,7 +461,7 @@ export default function PatientPortal() {
             <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11 }}>Patient Portal</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            {[["home","🏠",tr.home],["browse","🔍",tr.doctors],["myappts","📋",tr.myAppts],["prescriptions","💊",tr.myRx],["symptoms","🤖",tr.symptoms],["membership","👑",tr.membership],["profile","👤",tr.profile]].map(([v,icon,label])=>(
+            {[["home","🏠",tr.home],["browse","🔍",tr.doctors],["myappts","📋",tr.myAppts],["prescriptions","💊",tr.myRx],["records","🗂️",tr.records],["symptoms","🤖",tr.symptoms],["membership","👑",tr.membership],["profile","👤",tr.profile]].map(([v,icon,label])=>(
               <button key={v} onClick={()=>setView(v)}
                 style={{ padding:"7px 12px", borderRadius:8, border:"none", cursor:"pointer", fontSize:13,
                   fontWeight:600, background:view===v?"rgba(255,255,255,0.2)":"transparent",
@@ -940,6 +942,11 @@ export default function PatientPortal() {
             {/* MY PRESCRIPTIONS */}
             {view==="prescriptions"&&(
               <MyPrescriptions user={user} profile={profile}/>
+            )}
+
+            {/* HEALTH RECORDS VAULT */}
+            {view==="records"&&(
+              <HealthRecordsVault user={user} profile={profile}/>
             )}
 
             {/* AI SYMPTOM CHECKER */}
