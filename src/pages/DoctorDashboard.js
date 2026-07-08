@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
 import PrescriptionPortal from "../components/PrescriptionPortal";
 import TokenSystem from "../components/TokenSystem";
+import VideoCallModal from "../components/VideoCallModal";
 
 const today = new Date();
 const fmtDate = (d) => d.toISOString().split("T")[0];
@@ -416,6 +417,7 @@ export default function DoctorDashboard() {
   const [toast, setToast] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
   const [receiptModal, setReceiptModal] = useState(null);
+  const [videoCall, setVideoCall] = useState(null); // holds the appointment being joined, or null
 
   const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
 
@@ -689,6 +691,12 @@ export default function DoctorDashboard() {
                                 <span style={{fontSize:11,color:"#16a34a",fontWeight:600}}>Receipt uploaded</span>
                                 <button onClick={()=>setReceiptModal(a.paymentReceipt)} style={{fontSize:10,color:T.primary,background:"none",border:"none",cursor:"pointer",fontWeight:600,textDecoration:"underline"}}>View</button>
                               </div>}
+                              {a.type==="Online"&&a.status==="confirmed"&&a.videoRoomId&&(
+                                <button onClick={()=>setVideoCall(a)}
+                                  style={{marginTop:6,display:"inline-flex",alignItems:"center",gap:5,padding:"5px 12px",borderRadius:7,background:"linear-gradient(135deg,#16a34a,#15803d)",color:"#fff",border:"none",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                                  🎥 Join Video Call
+                                </button>
+                              )}
                             </div>
                             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}}>
                               <Badge status={a.status}/>
@@ -792,6 +800,12 @@ export default function DoctorDashboard() {
                           <div style={{fontSize:11,color:T.muted}}>📧 {a.patientEmail||"—"}</div>
                           {a.clinicName&&<div style={{fontSize:11,color:T.muted}}>🏥 {a.clinicName}</div>}
                           {a.clinicFee>0&&<div style={{fontSize:11,color:T.primary,fontWeight:600}}>PKR {Number(a.clinicFee).toLocaleString()}</div>}
+                          {a.type==="Online"&&a.status==="confirmed"&&a.videoRoomId&&(
+                            <button onClick={()=>setVideoCall(a)}
+                              style={{marginTop:6,display:"inline-flex",alignItems:"center",gap:5,padding:"5px 12px",borderRadius:7,background:"linear-gradient(135deg,#16a34a,#15803d)",color:"#fff",border:"none",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                              🎥 Join Video Call
+                            </button>
+                          )}
                         </div>
                         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}}>
                           <Badge status={a.status}/>
@@ -856,6 +870,12 @@ export default function DoctorDashboard() {
                               <button onClick={()=>setReceiptModal(a.paymentReceipt)} style={{padding:"5px 12px",background:"#16a34a",color:"#fff",border:"none",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer"}}>👁️ View</button>
                             </div>
                             :a.status!=="cancelled"&&<div style={{marginTop:6,fontSize:11,color:T.muted,fontStyle:"italic"}}>⏳ No receipt yet</div>}
+                          {a.type==="Online"&&a.status==="confirmed"&&a.videoRoomId&&(
+                            <button onClick={()=>setVideoCall(a)}
+                              style={{marginTop:8,display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:8,background:"linear-gradient(135deg,#16a34a,#15803d)",color:"#fff",border:"none",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                              🎥 Join Video Call
+                            </button>
+                          )}
                         </div>
                         <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"flex-start"}}>
                           {a.status==="pending"&&<>
@@ -1054,6 +1074,14 @@ export default function DoctorDashboard() {
       </div>
 
       {toast&&<Toast msg={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
+
+      {videoCall && (
+        <VideoCallModal
+          roomId={videoCall.videoRoomId}
+          displayName={`Dr. ${getFirstName(doctor?.name||profile?.name)}`}
+          onClose={()=>setVideoCall(null)}
+        />
+      )}
 
       {receiptModal&&(
         <div onClick={()=>setReceiptModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
