@@ -4,6 +4,7 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase/config";
 import DoctorRegister from "../components/DoctorRegister";
 import { PENDING_CLINIC_KEY } from "./ClinicSignupPage";
+import { getClinicById } from "../firebase/services";
 
 const ICONS = ["💊","🩺","🏥","❤️","🔬","💉","🩻","⚕️"];
 
@@ -52,8 +53,18 @@ export default function AuthPage() {
   // silently tagging their account with no visible confirmation.
   const pendingClinicId = typeof window !== "undefined" ? localStorage.getItem(PENDING_CLINIC_KEY) : null;
 
-  // TEMPORARY DEBUG — remove once the clinic-signup redirect issue is confirmed fixed
-  const debugPendingValue = typeof window !== "undefined" ? localStorage.getItem(PENDING_CLINIC_KEY) : "window undefined";
+  // If arriving via a clinic's signup link, fetch that clinic's info so
+  // the left panel can show their identity instead of generic AsaanDoc
+  // marketing — this is a fully white-labeled experience for that screen.
+  const [clinicBrand, setClinicBrand] = useState(null);
+  useEffect(() => {
+    const cid = localStorage.getItem(PENDING_CLINIC_KEY);
+    if (!cid) return;
+    (async () => {
+      const c = await getClinicById(cid);
+      setClinicBrand(c);
+    })();
+  }, []);
 
   const typed = useTypewriter([
     "Book appointments instantly",
@@ -151,10 +162,23 @@ export default function AuthPage() {
 
         {/* Logo */}
         <div style={{ animation:"slideInLeft 0.6s ease-out" }}>
-          <div style={{ fontSize:32, fontWeight:900, color:"#fff", letterSpacing:"-1px" }}>
-            asaan<span style={{ color:"#2ABFBF" }}>doc</span>
-          </div>
-          <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginTop:4, fontFamily:"serif", letterSpacing:"0.05em" }}>صحت کا آسان راستہ</div>
+          {clinicBrand ? (
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              {clinicBrand.logo ? (
+                <img src={clinicBrand.logo} alt={clinicBrand.name} style={{ width:44, height:44, borderRadius:10, objectFit:"cover", background:"#fff" }} onError={e=>{e.target.style.display="none";}}/>
+              ) : (
+                <div style={{ width:44, height:44, borderRadius:10, background:"rgba(42,191,191,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>🏥</div>
+              )}
+              <div style={{ fontSize:22, fontWeight:900, color:"#fff", letterSpacing:"-0.5px", lineHeight:1.2 }}>{clinicBrand.name}</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize:32, fontWeight:900, color:"#fff", letterSpacing:"-1px" }}>
+                asaan<span style={{ color:"#2ABFBF" }}>doc</span>
+              </div>
+              <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginTop:4, fontFamily:"serif", letterSpacing:"0.05em" }}>صحت کا آسان راستہ</div>
+            </>
+          )}
         </div>
 
         {/* Main content */}
@@ -171,9 +195,11 @@ export default function AuthPage() {
           </div>
 
           <h1 style={{ fontSize:32, fontWeight:900, color:"#fff", lineHeight:1.2, margin:"0 0 10px", letterSpacing:"-0.5px" }}>
-            1000+ Qualified &<br/>
-            <span style={{ color:"#2ABFBF" }}>Experienced</span><br/>
-            Doctors Connected
+            {clinicBrand ? (
+              <>Welcome to<br/><span style={{ color:"#2ABFBF" }}>{clinicBrand.name}</span></>
+            ) : (
+              <>1000+ Qualified &<br/><span style={{ color:"#2ABFBF" }}>Experienced</span><br/>Doctors Connected</>
+            )}
           </h1>
 
           {/* Typewriter */}
@@ -183,6 +209,23 @@ export default function AuthPage() {
             </span>
           </div>
 
+          {clinicBrand ? (
+            <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:16 }}>
+              {clinicBrand.address && (
+                <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:10, background:"rgba(42,191,191,0.08)", border:"1px solid rgba(42,191,191,0.2)" }}>
+                  <span style={{ fontSize:16 }}>📍</span>
+                  <span style={{ fontSize:13, color:"rgba(255,255,255,0.75)" }}>{clinicBrand.address}</span>
+                </div>
+              )}
+              {clinicBrand.phone && (
+                <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:10, background:"rgba(42,191,191,0.08)", border:"1px solid rgba(42,191,191,0.2)" }}>
+                  <span style={{ fontSize:16 }}>📞</span>
+                  <span style={{ fontSize:13, color:"rgba(255,255,255,0.75)" }}>{clinicBrand.phone}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+          <>
           {/* Stats */}
           <div style={{ display:"flex", gap:10, marginBottom:16 }}>
             {[["1000","Qualified Doctors"],["10,000","Patients Served"],["24/7","Support"]].map(([n,l])=>(
@@ -200,7 +243,7 @@ export default function AuthPage() {
             ))}
           </div>
 
-          {/* 20% Lab Test Discount Banner */}
+          {/* 20% Lab Test Discount Banner — platform-wide promo, only shown outside clinic branding */}
           <div style={{
             marginBottom:16, padding:"12px 16px", borderRadius:12,
             background:"linear-gradient(135deg,rgba(239,68,68,0.15),rgba(239,68,68,0.08))",
@@ -220,6 +263,8 @@ export default function AuthPage() {
               </div>
             </div>
           </div>
+          </>
+          )}
 
           {/* Features */}
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
@@ -252,10 +297,6 @@ export default function AuthPage() {
         boxShadow:"-8px 0 48px rgba(0,0,0,0.1)",
         minHeight:"100vh", overflowY:"auto",
       }}>
-
-        <div style={{ background:"#000", color:"#0f0", fontFamily:"monospace", fontSize:11, padding:"8px 10px", marginBottom:12, borderRadius:6, wordBreak:"break-all" }}>
-          DEBUG: pendingClinic="{debugPendingValue||"(null/empty)"}" | initial tab="{tab}"
-        </div>
 
         {showDoctorReg ? (
           <div>
