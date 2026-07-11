@@ -580,7 +580,7 @@ export default function AdminPanel() {
             <div style={{animation:"fadeUp 0.4s ease-out"}}>
               <Card style={{marginBottom:20}}>
                 <div style={{fontWeight:800,color:T.text,marginBottom:14,fontSize:15}}>+ Add New Clinic</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr auto",gap:12,alignItems:"end"}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr auto auto",gap:12,alignItems:"end"}}>
                   <div>
                     <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Clinic Name</label>
                     <input value={newClinicName} onChange={e=>setNewClinicName(e.target.value)} placeholder="e.g. ABC Medical Center"
@@ -597,9 +597,22 @@ export default function AdminPanel() {
                       style={{width:"100%",padding:"9px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
                   </div>
                   <div>
-                    <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Logo URL</label>
-                    <input value={newClinicLogo} onChange={e=>setNewClinicLogo(e.target.value)} placeholder="Optional image link"
-                      style={{width:"100%",padding:"9px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                    <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Logo</label>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      {newClinicLogo && (
+                        <img src={newClinicLogo} alt="Logo preview" style={{width:36,height:36,borderRadius:8,objectFit:"cover",border:`1.5px solid ${T.border}`}}/>
+                      )}
+                      <label style={{padding:"9px 14px",background:T.bg,border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:12,fontWeight:600,cursor:"pointer",color:T.text,whiteSpace:"nowrap"}}>
+                        📷 {newClinicLogo?"Change":"Upload"}
+                        <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+                          const file=e.target.files[0]; if(!file) return;
+                          if(file.size>500000){ showToast("Logo must be under 500KB."); return; }
+                          const reader=new FileReader();
+                          reader.onload=ev=>setNewClinicLogo(ev.target.result);
+                          reader.readAsDataURL(file);
+                        }}/>
+                      </label>
+                    </div>
                   </div>
                   <button onClick={handleCreateClinic} disabled={creatingClinic}
                     style={{padding:"10px 20px",background:T.primary,color:"#fff",border:"none",borderRadius:9,fontWeight:700,fontSize:13,cursor:creatingClinic?"not-allowed":"pointer",whiteSpace:"nowrap"}}>
@@ -668,15 +681,30 @@ export default function AdminPanel() {
                     <input value={editingClinic.phone} onChange={e=>setEditingClinic(ec=>({...ec,phone:e.target.value}))}
                       style={{width:"100%",padding:"10px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:14}}/>
 
-                    <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Logo URL</label>
-                    <input value={editingClinic.logo} onChange={e=>setEditingClinic(ec=>({...ec,logo:e.target.value}))} placeholder="https://..."
-                      style={{width:"100%",padding:"10px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:20}}/>
-
-                    {editingClinic.logo && (
-                      <div style={{marginBottom:20}}>
-                        <img src={editingClinic.logo} alt="Preview" style={{width:56,height:56,borderRadius:12,objectFit:"cover",border:`1.5px solid ${T.border}`}} onError={e=>{e.target.style.display="none";}}/>
-                      </div>
-                    )}
+                    <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Logo</label>
+                    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+                      {editingClinic.logo ? (
+                        <img src={editingClinic.logo} alt="Logo preview" style={{width:56,height:56,borderRadius:12,objectFit:"cover",border:`1.5px solid ${T.border}`}} onError={e=>{e.target.style.display="none";}}/>
+                      ) : (
+                        <div style={{width:56,height:56,borderRadius:12,background:T.bg,border:`1.5px dashed ${T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>🏥</div>
+                      )}
+                      <label style={{padding:"9px 16px",background:T.bg,border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:13,fontWeight:600,cursor:"pointer",color:T.text}}>
+                        📷 {editingClinic.logo?"Change Logo":"Upload Logo"}
+                        <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+                          const file=e.target.files[0]; if(!file) return;
+                          if(file.size>500000){ showToast("Logo must be under 500KB."); return; }
+                          const reader=new FileReader();
+                          reader.onload=ev=>setEditingClinic(ec=>({...ec,logo:ev.target.result}));
+                          reader.readAsDataURL(file);
+                        }}/>
+                      </label>
+                      {editingClinic.logo && (
+                        <button onClick={()=>setEditingClinic(ec=>({...ec,logo:""}))}
+                          style={{background:"#fef2f2",border:"1px solid #fecaca",color:"#EF4444",borderRadius:7,padding:"6px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
 
                     <div style={{display:"flex",gap:10}}>
                       <button onClick={()=>setEditingClinic(null)}
