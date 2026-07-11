@@ -30,7 +30,12 @@ function useTypewriter(texts, speed=80, pause=2000) {
 }
 
 export default function AuthPage() {
-  const [tab,      setTab]      = useState("signin");
+  // If arriving from a clinic's signup link, jump straight to Create
+  // Account — landing on Sign In (the old default) made it look like
+  // clicking "Join as a Patient" did nothing.
+  const [tab,      setTab]      = useState(() =>
+    (typeof window !== "undefined" && localStorage.getItem(PENDING_CLINIC_KEY)) ? "signup" : "signin"
+  );
   const [showDoctorReg, setShowDoctorReg] = useState(false);
   const [name,     setName]     = useState("");
   const [phone,    setPhone]    = useState("");
