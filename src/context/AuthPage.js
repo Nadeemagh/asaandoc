@@ -52,6 +52,9 @@ export default function AuthPage() {
   // silently tagging their account with no visible confirmation.
   const pendingClinicId = typeof window !== "undefined" ? localStorage.getItem(PENDING_CLINIC_KEY) : null;
 
+  // TEMPORARY DEBUG — remove once the clinic-signup redirect issue is confirmed fixed
+  const debugPendingValue = typeof window !== "undefined" ? localStorage.getItem(PENDING_CLINIC_KEY) : "window undefined";
+
   const typed = useTypewriter([
     "Book appointments instantly",
     "Get digital prescriptions",
@@ -249,6 +252,10 @@ export default function AuthPage() {
         boxShadow:"-8px 0 48px rgba(0,0,0,0.1)",
         minHeight:"100vh", overflowY:"auto",
       }}>
+
+        <div style={{ background:"#000", color:"#0f0", fontFamily:"monospace", fontSize:11, padding:"8px 10px", marginBottom:12, borderRadius:6, wordBreak:"break-all" }}>
+          DEBUG: pendingClinic="{debugPendingValue||"(null/empty)"}" | initial tab="{tab}"
+        </div>
 
         {showDoctorReg ? (
           <div>
