@@ -1,9 +1,9 @@
-// src/pages/AuthPage.js
 import { useState, useEffect } from "react";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase/config";
 import DoctorRegister from "../components/DoctorRegister";
+import { PENDING_CLINIC_KEY } from "./ClinicSignupPage";
 
 const ICONS = ["💊","🩺","🏥","❤️","🔬","💉","🩻","⚕️"];
 
@@ -30,7 +30,12 @@ function useTypewriter(texts, speed=80, pause=2000) {
 }
 
 export default function AuthPage() {
-  const [tab,      setTab]      = useState("signin");
+  // If arriving from a clinic's signup link, jump straight to Create
+  // Account — landing on Sign In (the old default) made it look like
+  // clicking "Join as a Patient" did nothing.
+  const [tab,      setTab]      = useState(() =>
+    (typeof window !== "undefined" && localStorage.getItem(PENDING_CLINIC_KEY)) ? "signup" : "signin"
+  );
   const [showDoctorReg, setShowDoctorReg] = useState(false);
   const [name,     setName]     = useState("");
   const [phone,    setPhone]    = useState("");
@@ -41,6 +46,14 @@ export default function AuthPage() {
   const [showPass, setShowPass] = useState(false);
   const [success,  setSuccess]  = useState(false);
   const [focused,  setFocused]  = useState(null);
+
+  // If the visitor arrived via a clinic's signup link, show a small
+  // banner so it's clear which clinic they're joining, rather than
+  // silently tagging their account with no visible confirmation.
+  const pendingClinicId = typeof window !== "undefined" ? localStorage.getItem(PENDING_CLINIC_KEY) : null;
+
+  // TEMPORARY DEBUG — remove once the clinic-signup redirect issue is confirmed fixed
+  const debugPendingValue = typeof window !== "undefined" ? localStorage.getItem(PENDING_CLINIC_KEY) : "window undefined";
 
   const typed = useTypewriter([
     "Book appointments instantly",
@@ -64,7 +77,13 @@ export default function AuthPage() {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(cred.user, { displayName: name });
-      await setDoc(doc(db, "users", cred.user.uid), { name, email, phone, role:"patient", createdAt: serverTimestamp() });
+      // If this signup came from a clinic's link, tag the new patient
+      // with that clinic so they only ever see that clinic's doctors.
+      const clinicId = localStorage.getItem(PENDING_CLINIC_KEY) || null;
+      await setDoc(doc(db, "users", cred.user.uid), {
+        name, email, phone, role:"patient", clinicId, createdAt: serverTimestamp()
+      });
+      if (clinicId) localStorage.removeItem(PENDING_CLINIC_KEY);
       setSuccess(true);
     } catch(err) { setError(friendlyError(err.code)); }
     setLoading(false);
@@ -234,6 +253,10 @@ export default function AuthPage() {
         minHeight:"100vh", overflowY:"auto",
       }}>
 
+        <div style={{ background:"#000", color:"#0f0", fontFamily:"monospace", fontSize:11, padding:"8px 10px", marginBottom:12, borderRadius:6, wordBreak:"break-all" }}>
+          DEBUG: pendingClinic="{debugPendingValue||"(null/empty)"}" | initial tab="{tab}"
+        </div>
+
         {showDoctorReg ? (
           <div>
             <button onClick={()=>setShowDoctorReg(false)} style={{background:"none",border:"none",color:"#2ABFBF",fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:16,padding:0,fontFamily:"inherit"}}>← Back to Sign In</button>
@@ -250,6 +273,12 @@ export default function AuthPage() {
           </div>
         ) : (
           <>
+            {pendingClinicId && tab==="signup" && (
+              <div style={{ marginBottom:16, padding:"11px 14px", background:"#e8f9f9", border:"1.5px solid #2ABFBF", borderRadius:10, fontSize:12.5, color:"#1B3A5C", fontWeight:600, display:"flex", alignItems:"center", gap:8 }}>
+                🏥 Joining as a patient of your clinic
+              </div>
+            )}
+
             {/* Tabs */}
             <div style={{ display:"flex", background:"#f1f5f9", borderRadius:14, padding:4, marginBottom:24, gap:4 }}>
               {[["signin","🔑 Sign In"],["signup","✨ Create Account"]].map(([id,label])=>(
