@@ -449,7 +449,7 @@ export default function AuthPage({ initialClinicSlug = null, forceTab = null }) 
                 {loading ? (
                   <><div style={{ width:18, height:18, border:"3px solid rgba(255,255,255,0.3)", borderTop:"3px solid #fff", borderRadius:"50%", animation:"spin 0.8s linear infinite" }}/> Please wait…</>
                 ) : (
-                  <>{tab==="signin"?"Sign In to AsaanDoc":"Create My Free Account"} →</>
+                  <>{tab==="signin" ? (clinicBrand ? `Sign In to ${clinicBrand.name}` : "Sign In to AsaanDoc") : "Create My Free Account"} →</>
                 )}
               </button>
 
@@ -471,9 +471,9 @@ export default function AuthPage({ initialClinicSlug = null, forceTab = null }) 
             {/* Doctor registration link */}
             <div style={{ marginTop:16, textAlign:"center", padding:"14px", background:"#f0fdf4", borderRadius:12, border:"1.5px solid #86efac" }}>
               <div style={{ fontSize:12, color:"#16a34a", fontWeight:600, marginBottom:6 }}>👨‍⚕️ Are you a Doctor?</div>
-              <button onClick={()=>setShowDoctorReg(true)}
+              <button onClick={()=>{ if (clinicBrand) setClinicDoctorId(clinicBrand.id); setShowDoctorReg(true); }}
                 style={{ background:"none", border:"none", color:"#2ABFBF", fontWeight:700, cursor:"pointer", fontSize:13, fontFamily:"inherit", textDecoration:"underline" }}>
-                Register as a Doctor on AsaanDoc →
+                {clinicBrand ? `Register as a Doctor for ${clinicBrand.name} →` : "Register as a Doctor on AsaanDoc →"}
               </button>
             </div>
 
