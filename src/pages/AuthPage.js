@@ -3,7 +3,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfi
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase/config";
 import DoctorRegister from "../components/DoctorRegister";
-import { PENDING_CLINIC_KEY } from "./ClinicSignupPage";
+import { PENDING_CLINIC_KEY, PENDING_CLINIC_DOCTOR_KEY } from "./ClinicSignupPage";
 import { getClinicById } from "../firebase/services";
 
 const ICONS = ["💊","🩺","🏥","❤️","🔬","💉","🩻","⚕️"];
@@ -55,10 +55,18 @@ export default function AuthPage() {
   // root URL always shows plain AsaanDoc branding again, never a stale
   // clinic from a previous click.
   const [clinicBrand, setClinicBrand] = useState(null);
+  const [clinicDoctorId, setClinicDoctorId] = useState(null); // clinic id to tag a NEW doctor with, if arriving via clinic doctor link
   useEffect(() => {
-    const cid = localStorage.getItem(PENDING_CLINIC_KEY);
+    const patientCid = localStorage.getItem(PENDING_CLINIC_KEY);
+    const doctorCid = localStorage.getItem(PENDING_CLINIC_DOCTOR_KEY);
+    const cid = patientCid || doctorCid;
     if (!cid) return;
-    localStorage.removeItem(PENDING_CLINIC_KEY);
+    if (patientCid) localStorage.removeItem(PENDING_CLINIC_KEY);
+    if (doctorCid) {
+      localStorage.removeItem(PENDING_CLINIC_DOCTOR_KEY);
+      setClinicDoctorId(doctorCid);
+      setShowDoctorReg(true); // jump straight to the doctor registration form
+    }
     (async () => {
       const c = await getClinicById(cid);
       setClinicBrand(c);
@@ -301,7 +309,7 @@ export default function AuthPage() {
         {showDoctorReg ? (
           <div>
             <button onClick={()=>setShowDoctorReg(false)} style={{background:"none",border:"none",color:"#2ABFBF",fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:16,padding:0,fontFamily:"inherit"}}>← Back to Sign In</button>
-            <DoctorRegister onBack={()=>setShowDoctorReg(false)}/>
+            <DoctorRegister onBack={()=>setShowDoctorReg(false)} clinicId={clinicDoctorId}/>
           </div>
         ) : success ? (
           <div style={{ textAlign:"center", animation:"fadeInUp 0.5s ease-out" }}>
