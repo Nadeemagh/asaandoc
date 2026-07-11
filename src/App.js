@@ -65,6 +65,14 @@ export default function App() {
   if (clinicMatch) {
     return <ClinicSignupPage slug={clinicMatch[1]} />;
   }
+  const clinicLoginMatch = path.match(/^\/clinic\/([^/]+)\/login\/?$/);
+  if (clinicLoginMatch) {
+    return <><AuthPage initialClinicSlug={clinicLoginMatch[1]} forceTab="signin" /><InstallPrompt /></>;
+  }
+  const clinicDoctorLoginMatch = path.match(/^\/clinic\/([^/]+)\/doctor-login\/?$/);
+  if (clinicDoctorLoginMatch) {
+    return <><AuthPage initialClinicSlug={clinicDoctorLoginMatch[1]} forceTab="signin" /><InstallPrompt /></>;
+  }
 
   // ── Show loading screen until role is fully resolved ──────
   // This prevents ANY flash of wrong portal
