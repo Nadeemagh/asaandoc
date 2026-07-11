@@ -89,7 +89,7 @@ export default function ClinicSignupPage({ slug }) {
             style={{ width: "100%", padding: "15px", background: `linear-gradient(135deg,${T.primary},${T.primaryDark})`, color: "#fff", border: "none", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: "pointer", boxShadow: "0 6px 20px rgba(42,191,191,0.35)" }}>
             Join as a Patient →
           </button>
-          <div style={{ fontSize: 11, color: T.muted, marginTop: 10 }}>You'll create a free AsaanDoc account, or sign in if you already have one.</div>
+          <div style={{ fontSize: 11, color: T.muted, marginTop: 10 }}>You'll create a free account, or sign in if you already have one.</div>
 
           <div style={{ margin: "20px 0 16px", display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ flex: 1, height: 1, background: T.border }}/>
@@ -104,6 +104,10 @@ export default function ClinicSignupPage({ slug }) {
               Register as a Doctor for this Clinic →
             </button>
           </div>
+        </div>
+
+        <div style={{ textAlign: "center", fontSize: 11, color: T.muted, marginTop: 24 }}>
+          Powered by <a href="/" style={{ color: T.primary, fontWeight: 700, textDecoration: "none" }}>AsaanDoc</a>
         </div>
       </div>
     </div>
