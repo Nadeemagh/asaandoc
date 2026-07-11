@@ -4,7 +4,7 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase/config";
 import DoctorRegister from "../components/DoctorRegister";
 import { PENDING_CLINIC_KEY, PENDING_CLINIC_DOCTOR_KEY } from "./ClinicSignupPage";
-import { getClinicById } from "../firebase/services";
+import { getClinicById, getClinicBySlug } from "../firebase/services";
 
 const ICONS = ["💊","🩺","🏥","❤️","🔬","💉","🩻","⚕️"];
 
@@ -30,13 +30,15 @@ function useTypewriter(texts, speed=80, pause=2000) {
   return display;
 }
 
-export default function AuthPage() {
-  // If arriving from a clinic's signup link, jump straight to Create
+export default function AuthPage({ initialClinicSlug = null, forceTab = null }) {
+  // If arriving via a clinic's signup link, jump straight to Create
   // Account — landing on Sign In (the old default) made it look like
-  // clicking "Join as a Patient" did nothing.
-  const [tab,      setTab]      = useState(() =>
-    (typeof window !== "undefined" && localStorage.getItem(PENDING_CLINIC_KEY)) ? "signup" : "signin"
-  );
+  // clicking "Join as a Patient" did nothing. A direct clinic LOGIN
+  // link (forceTab="signin") always overrides this to Sign In instead.
+  const [tab,      setTab]      = useState(() => {
+    if (forceTab) return forceTab;
+    return (typeof window !== "undefined" && localStorage.getItem(PENDING_CLINIC_KEY)) ? "signup" : "signin";
+  });
   const [showDoctorReg, setShowDoctorReg] = useState(false);
   const [name,     setName]     = useState("");
   const [phone,    setPhone]    = useState("");
@@ -57,6 +59,14 @@ export default function AuthPage() {
   const [clinicBrand, setClinicBrand] = useState(null);
   const [clinicDoctorId, setClinicDoctorId] = useState(null); // clinic id to tag a NEW doctor with, if arriving via clinic doctor link
   useEffect(() => {
+    // Direct login link (/clinic/:slug/login or /clinic/:slug/doctor-login)
+    // — fetch branding straight by slug, no redirect/localStorage needed
+    // since a login doesn't need to persist anything across navigation.
+    if (initialClinicSlug) {
+      (async () => setClinicBrand(await getClinicBySlug(initialClinicSlug)))();
+      return;
+    }
+
     const patientCid = localStorage.getItem(PENDING_CLINIC_KEY);
     const doctorCid = localStorage.getItem(PENDING_CLINIC_DOCTOR_KEY);
     const cid = patientCid || doctorCid;
@@ -71,7 +81,7 @@ export default function AuthPage() {
       const c = await getClinicById(cid);
       setClinicBrand(c);
     })();
-  }, []);
+  }, [initialClinicSlug]);
 
   const typed = useTypewriter([
     "Book appointments instantly",
