@@ -333,7 +333,7 @@ export default function AuthPage() {
             {/* Greeting */}
             <div style={{ marginBottom:20 }}>
               <h2 style={{ margin:"0 0 4px", fontSize:21, fontWeight:800, color:"#1B3A5C", letterSpacing:"-0.3px" }}>
-                {tab==="signin"?"Welcome back 👋":"Join AsaanDoc 🏥"}
+                {tab==="signin" ? "Welcome back 👋" : (clinicBrand ? `Join ${clinicBrand.name} 🏥` : "Join AsaanDoc 🏥")}
               </h2>
               <p style={{ margin:0, fontSize:13, color:"#94a3b8" }}>
                 {tab==="signin"?"Sign in to access your health portal":"Free account · Takes just 60 seconds"}
