@@ -25,7 +25,7 @@ const toNum = (val) => {
 
 // ─── AUTH ─────────────────────────────────────────────────────────
 
-export const registerUser = async ({ email, password, name, role, phone = "", doctorId = null }) => {
+export const registerUser = async ({ email, password, name, role, phone = "", doctorId = null, clinicId = null }) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(cred.user, { displayName: name });
 
@@ -57,6 +57,7 @@ export const registerUser = async ({ email, password, name, role, phone = "", do
     uid: cred.user.uid, name, email, role,
     phone: phone || "",
     doctorId: finalDoctorId || null,
+    clinicId: clinicId || null,
     createdAt: serverTimestamp(),
   });
 
@@ -334,7 +335,48 @@ export const updateDoctorData = async (doctorId, data) => {
   }
 };
 
-// ─── PUBLIC DOCTOR PROFILE SLUGS ───────────────────────────────────
+// ─── CLINICS (multi-tenant support) ────────────────────────────────
+// A doctor/patient with no clinicId behaves exactly as before (open
+// AsaanDoc marketplace — visible to/sees everyone). Setting clinicId
+// on both scopes them to only see each other.
+
+export const createClinic = async ({ name, address = "", phone = "" }) => {
+  const ref = doc(collection(db, "clinics"));
+  const slug = `${slugify(name)}-${ref.id.slice(-4)}`;
+  await setDoc(ref, { name, address, phone, slug, active: true, createdAt: serverTimestamp() });
+  return { id: ref.id, slug };
+};
+
+export const getAllClinics = async () => {
+  const snap = await getDocs(collection(db, "clinics"));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+export const getClinicBySlug = async (slug) => {
+  const q = query(collection(db, "clinics"), where("slug", "==", slug));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() };
+};
+
+export const updateClinic = async (clinicId, data) => {
+  await updateDoc(doc(db, "clinics", clinicId), data);
+};
+
+export const assignDoctorToClinic = async (doctorId, clinicId) => {
+  // clinicId === null unassigns the doctor back to the open marketplace
+  await updateDoc(doc(db, "doctors", doctorId), { clinicId: clinicId || null });
+};
+
+// Fetches doctors scoped correctly: a clinic patient sees only that
+// clinic's doctors; an open-marketplace patient (no clinicId) sees only
+// independent doctors, exactly like before this feature existed.
+export const getDoctorsForPatient = async (patientClinicId) => {
+  const all = await getDoctors();
+  if (patientClinicId) return all.filter(d => d.clinicId === patientClinicId);
+  return all.filter(d => !d.clinicId);
+};
 // Turns "Dr. Javaid Iqbal" into "dr-javaid-iqbal" — used to build
 // human-readable public URLs like /doctor/dr-javaid-iqbal-cardiologist-a1b2
 export const slugify = (str) =>
