@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs, query, orderBy, updateDoc, doc, deleteDoc, where } from "firebase/firestore";
 import { db } from "../firebase/config";
-import { logoutUser, backfillDoctorSlugs, ensureDoctorSlug } from "../firebase/services";
+import { logoutUser, backfillDoctorSlugs, ensureDoctorSlug, createClinic, getAllClinics, assignDoctorToClinic } from "../firebase/services";
 import AdminPromotionsManager from "../components/AdminPromotionsManager";
 import AdminBackupRestore from "../components/AdminBackupRestore";
 
@@ -38,9 +38,18 @@ export default function AdminPanel() {
   const [patients,    setPatients]    = useState([]);
   const [appointments,setAppointments]= useState([]);
   const [pending,     setPending]     = useState([]);
+  const [clinics,     setClinics]     = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [toast,       setToast]       = useState("");
   const [search,      setSearch]      = useState("");
+  const [newClinicName, setNewClinicName] = useState("");
+  const [newClinicAddress, setNewClinicAddress] = useState("");
+  const [newClinicPhone, setNewClinicPhone] = useState("");
+  const [creatingClinic, setCreatingClinic] = useState(false);
+
+  const loadClinics = async () => {
+    try { setClinics(await getAllClinics()); } catch(e) { console.error(e); }
+  };
 
   const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(""),3000); };
 
@@ -58,6 +67,7 @@ export default function AdminPanel() {
         setAppointments(apptSnap.docs.map(d=>({id:d.id,...d.data()})));
         setPending(pendingSnap.docs.map(d=>({id:d.id,...d.data()})));
       } catch(e){ console.error(e); }
+      loadClinics();
       setLoading(false);
     })();
   },[]);
@@ -98,6 +108,33 @@ export default function AdminPanel() {
     }
   };
 
+  const handleCreateClinic = async () => {
+    if (!newClinicName.trim()) { showToast("Enter a clinic name."); return; }
+    setCreatingClinic(true);
+    try {
+      await createClinic({ name: newClinicName.trim(), address: newClinicAddress.trim(), phone: newClinicPhone.trim() });
+      setNewClinicName(""); setNewClinicAddress(""); setNewClinicPhone("");
+      await loadClinics();
+      showToast("✅ Clinic created!");
+    } catch(e) { console.error(e); showToast("Failed to create clinic."); }
+    setCreatingClinic(false);
+  };
+
+  const copyClinicLink = async (clinic) => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/clinic/${clinic.slug}`);
+      showToast("🔗 Clinic signup link copied!");
+    } catch(e) { showToast("Failed to copy link."); }
+  };
+
+  const handleAssignClinic = async (doctorId, clinicId) => {
+    try {
+      await assignDoctorToClinic(doctorId, clinicId);
+      setDoctors(ds => ds.map(d => d.id === doctorId ? { ...d, clinicId: clinicId || null } : d));
+      showToast(clinicId ? "✅ Doctor assigned to clinic." : "✅ Doctor moved to open marketplace.");
+    } catch(e) { console.error(e); showToast("Failed to update."); }
+  };
+
   const [backfilling, setBackfilling] = useState(false);
   const handleBackfillSlugs = async () => {
     setBackfilling(true);
@@ -132,6 +169,7 @@ export default function AdminPanel() {
     ["appointments","📅","Appointments"],
     ["revenue","💰","Revenue"],
     ["promotions","📣","Promotions"],
+    ["clinics","🏥","Clinics"],
     ["backup","💾","Backup"],
   ];
 
@@ -361,6 +399,15 @@ export default function AdminPanel() {
                         <div style={{fontSize:12,color:T.primary,fontWeight:600}}>{doc.specialty}</div>
                         <div style={{fontSize:11,color:T.muted}}>⏳ {doc.exp} yrs · PMC: {doc.pmcNo||doc.license||"—"} · {(doc.clinics||[]).length} clinic(s)</div>
                         {doc.slug && <div style={{fontSize:11,color:T.muted,marginTop:2}}>🔗 /doctor/{doc.slug}</div>}
+                        <div style={{marginTop:6}}>
+                          <select value={doc.clinicId||""} onChange={e=>handleAssignClinic(doc.id, e.target.value||null)}
+                            style={{padding:"5px 10px",borderRadius:7,border:`1.5px solid ${T.border}`,fontSize:11,fontFamily:"inherit",color:T.text,background:T.white}}>
+                            <option value="">🌐 Open AsaanDoc Marketplace</option>
+                            {clinics.map(c=>(
+                              <option key={c.id} value={c.id}>🏥 {c.name}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                       <div style={{display:"flex",gap:8}}>
                         <button onClick={()=>copyPublicLink(doc)}
@@ -494,6 +541,66 @@ export default function AdminPanel() {
                   </tbody>
                 </table>
               </Card>
+            </div>
+          )}
+
+          {/* ── CLINICS ── */}
+          {view==="clinics"&&(
+            <div style={{animation:"fadeUp 0.4s ease-out"}}>
+              <Card style={{marginBottom:20}}>
+                <div style={{fontWeight:800,color:T.text,marginBottom:14,fontSize:15}}>+ Add New Clinic</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr auto",gap:12,alignItems:"end"}}>
+                  <div>
+                    <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Clinic Name</label>
+                    <input value={newClinicName} onChange={e=>setNewClinicName(e.target.value)} placeholder="e.g. ABC Medical Center"
+                      style={{width:"100%",padding:"9px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                  </div>
+                  <div>
+                    <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Address</label>
+                    <input value={newClinicAddress} onChange={e=>setNewClinicAddress(e.target.value)} placeholder="Optional"
+                      style={{width:"100%",padding:"9px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                  </div>
+                  <div>
+                    <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Phone</label>
+                    <input value={newClinicPhone} onChange={e=>setNewClinicPhone(e.target.value)} placeholder="Optional"
+                      style={{width:"100%",padding:"9px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                  </div>
+                  <button onClick={handleCreateClinic} disabled={creatingClinic}
+                    style={{padding:"10px 20px",background:T.primary,color:"#fff",border:"none",borderRadius:9,fontWeight:700,fontSize:13,cursor:creatingClinic?"not-allowed":"pointer",whiteSpace:"nowrap"}}>
+                    {creatingClinic?"Creating…":"+ Add Clinic"}
+                  </button>
+                </div>
+              </Card>
+
+              {clinics.length===0?(
+                <Card style={{textAlign:"center",padding:"40px"}}>
+                  <div style={{fontSize:40,marginBottom:10}}>🏥</div>
+                  <div style={{fontWeight:700,color:T.text}}>No clinics yet</div>
+                  <div style={{color:T.muted,fontSize:13,marginTop:4}}>Add one above — doctors and patients can then be scoped to it.</div>
+                </Card>
+              ):(
+                <div style={{display:"grid",gap:10}}>
+                  {clinics.map(c=>{
+                    const clinicDoctors = doctors.filter(d=>d.clinicId===c.id).length;
+                    return (
+                      <Card key={c.id} style={{padding:"16px 20px"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+                          <div>
+                            <div style={{fontWeight:800,fontSize:15,color:T.text}}>{c.name}</div>
+                            {c.address&&<div style={{fontSize:12,color:T.muted}}>📍 {c.address}</div>}
+                            {c.phone&&<div style={{fontSize:12,color:T.muted}}>📞 {c.phone}</div>}
+                            <div style={{fontSize:11,color:T.primary,fontWeight:600,marginTop:4}}>{clinicDoctors} doctor(s) assigned · /clinic/{c.slug}</div>
+                          </div>
+                          <button onClick={()=>copyClinicLink(c)}
+                            style={{padding:"8px 16px",background:T.primaryLight,color:T.primary,border:`1.5px solid ${T.primary}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                            🔗 Copy Patient Signup Link
+                          </button>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
