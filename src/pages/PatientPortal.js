@@ -1,7 +1,7 @@
 // src/pages/PatientPortal.js
 import { useState, useEffect, useCallback } from "react";
 import { T, Badge, Card, StatCard, Toast, Spinner, inputStyle, labelStyle } from "../components/UI";
-import { getDoctors, bookAppointment, getAppointmentsByPatient, updateAppointmentStatus, ensureAppointmentVideoRoom } from "../firebase/services";
+import { getDoctorsForPatient, bookAppointment, getAppointmentsByPatient, updateAppointmentStatus, ensureAppointmentVideoRoom } from "../firebase/services";
 import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -356,12 +356,12 @@ export default function PatientPortal() {
   const loadData = useCallback(async () => {
     setLoadingData(true);
     try {
-      const [docs, appts] = await Promise.all([getDoctors(), getAppointmentsByPatient(user.uid)]);
+      const [docs, appts] = await Promise.all([getDoctorsForPatient(profile?.clinicId), getAppointmentsByPatient(user.uid)]);
       setDoctors(Array.isArray(docs)?docs:[]);
       setAppointments(Array.isArray(appts)?appts:[]);
     } catch(e) { console.error("Load error:",e); showToast("Failed to load data.","error"); }
     setLoadingData(false);
-  }, [user.uid]);
+  }, [user.uid, profile?.clinicId]);
 
   useEffect(()=>{ loadData(); },[loadData]);
 
