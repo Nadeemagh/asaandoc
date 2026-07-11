@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs, query, orderBy, updateDoc, doc, deleteDoc, where } from "firebase/firestore";
 import { db } from "../firebase/config";
-import { logoutUser, backfillDoctorSlugs, ensureDoctorSlug, createClinic, getAllClinics, assignDoctorToClinic } from "../firebase/services";
+import { logoutUser, backfillDoctorSlugs, ensureDoctorSlug, createClinic, getAllClinics, assignDoctorToClinic, updateClinic } from "../firebase/services";
 import AdminPromotionsManager from "../components/AdminPromotionsManager";
 import AdminBackupRestore from "../components/AdminBackupRestore";
 
@@ -126,6 +126,36 @@ export default function AdminPanel() {
       await navigator.clipboard.writeText(`${window.location.origin}/clinic/${clinic.slug}`);
       showToast("🔗 Clinic signup link copied!");
     } catch(e) { showToast("Failed to copy link."); }
+  };
+
+  const [editingClinic, setEditingClinic] = useState(null); // clinic object being edited, or null
+  const [savingClinicEdit, setSavingClinicEdit] = useState(false);
+
+  const openEditClinic = (clinic) => {
+    setEditingClinic({
+      id: clinic.id,
+      name: clinic.name || "",
+      address: clinic.address || "",
+      phone: clinic.phone || "",
+      logo: clinic.logo || "",
+    });
+  };
+
+  const handleSaveClinicEdit = async () => {
+    if (!editingClinic.name.trim()) { showToast("Clinic name is required."); return; }
+    setSavingClinicEdit(true);
+    try {
+      await updateClinic(editingClinic.id, {
+        name: editingClinic.name.trim(),
+        address: editingClinic.address.trim(),
+        phone: editingClinic.phone.trim(),
+        logo: editingClinic.logo.trim(),
+      });
+      setClinics(cs => cs.map(c => c.id === editingClinic.id ? { ...c, ...editingClinic } : c));
+      setEditingClinic(null);
+      showToast("✅ Clinic updated!");
+    } catch(e) { console.error(e); showToast("Failed to update clinic."); }
+    setSavingClinicEdit(false);
   };
 
   const handleAssignClinic = async (doctorId, clinicId) => {
@@ -591,20 +621,74 @@ export default function AdminPanel() {
                     return (
                       <Card key={c.id} style={{padding:"16px 20px"}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-                          <div>
-                            <div style={{fontWeight:800,fontSize:15,color:T.text}}>{c.name}</div>
-                            {c.address&&<div style={{fontSize:12,color:T.muted}}>📍 {c.address}</div>}
-                            {c.phone&&<div style={{fontSize:12,color:T.muted}}>📞 {c.phone}</div>}
-                            <div style={{fontSize:11,color:T.primary,fontWeight:600,marginTop:4}}>{clinicDoctors} doctor(s) assigned · /clinic/{c.slug}</div>
+                          <div style={{display:"flex",alignItems:"center",gap:12}}>
+                            {c.logo ? (
+                              <img src={c.logo} alt={c.name} style={{width:44,height:44,borderRadius:10,objectFit:"cover",border:`1.5px solid ${T.border}`}} onError={e=>{e.target.style.display="none";}}/>
+                            ) : (
+                              <div style={{width:44,height:44,borderRadius:10,background:T.primaryLight,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>🏥</div>
+                            )}
+                            <div>
+                              <div style={{fontWeight:800,fontSize:15,color:T.text}}>{c.name}</div>
+                              {c.address&&<div style={{fontSize:12,color:T.muted}}>📍 {c.address}</div>}
+                              {c.phone&&<div style={{fontSize:12,color:T.muted}}>📞 {c.phone}</div>}
+                              <div style={{fontSize:11,color:T.primary,fontWeight:600,marginTop:4}}>{clinicDoctors} doctor(s) assigned · /clinic/{c.slug}</div>
+                            </div>
                           </div>
-                          <button onClick={()=>copyClinicLink(c)}
-                            style={{padding:"8px 16px",background:T.primaryLight,color:T.primary,border:`1.5px solid ${T.primary}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
-                            🔗 Copy Patient Signup Link
-                          </button>
+                          <div style={{display:"flex",gap:8}}>
+                            <button onClick={()=>openEditClinic(c)}
+                              style={{padding:"8px 16px",background:T.white,color:T.text,border:`1.5px solid ${T.border}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                              ✏️ Edit
+                            </button>
+                            <button onClick={()=>copyClinicLink(c)}
+                              style={{padding:"8px 16px",background:T.primaryLight,color:T.primary,border:`1.5px solid ${T.primary}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                              🔗 Copy Patient Signup Link
+                            </button>
+                          </div>
                         </div>
                       </Card>
                     );
                   })}
+                </div>
+              )}
+
+              {editingClinic && (
+                <div onClick={()=>setEditingClinic(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+                  <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:16,padding:28,maxWidth:480,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+                    <div style={{fontWeight:800,fontSize:16,color:T.text,marginBottom:18}}>Edit Clinic</div>
+
+                    <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Clinic Name</label>
+                    <input value={editingClinic.name} onChange={e=>setEditingClinic(ec=>({...ec,name:e.target.value}))}
+                      style={{width:"100%",padding:"10px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:14}}/>
+
+                    <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Address</label>
+                    <input value={editingClinic.address} onChange={e=>setEditingClinic(ec=>({...ec,address:e.target.value}))}
+                      style={{width:"100%",padding:"10px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:14}}/>
+
+                    <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Phone</label>
+                    <input value={editingClinic.phone} onChange={e=>setEditingClinic(ec=>({...ec,phone:e.target.value}))}
+                      style={{width:"100%",padding:"10px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:14}}/>
+
+                    <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Logo URL</label>
+                    <input value={editingClinic.logo} onChange={e=>setEditingClinic(ec=>({...ec,logo:e.target.value}))} placeholder="https://..."
+                      style={{width:"100%",padding:"10px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:20}}/>
+
+                    {editingClinic.logo && (
+                      <div style={{marginBottom:20}}>
+                        <img src={editingClinic.logo} alt="Preview" style={{width:56,height:56,borderRadius:12,objectFit:"cover",border:`1.5px solid ${T.border}`}} onError={e=>{e.target.style.display="none";}}/>
+                      </div>
+                    )}
+
+                    <div style={{display:"flex",gap:10}}>
+                      <button onClick={()=>setEditingClinic(null)}
+                        style={{flex:1,padding:"11px",background:"#fff",border:`1.5px solid ${T.border}`,borderRadius:10,fontWeight:700,fontSize:13,cursor:"pointer",color:T.muted}}>
+                        Cancel
+                      </button>
+                      <button onClick={handleSaveClinicEdit} disabled={savingClinicEdit}
+                        style={{flex:2,padding:"11px",background:T.primary,color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:13,cursor:savingClinicEdit?"not-allowed":"pointer"}}>
+                        {savingClinicEdit?"Saving…":"Save Changes"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
