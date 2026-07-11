@@ -340,16 +340,22 @@ export const updateDoctorData = async (doctorId, data) => {
 // AsaanDoc marketplace — visible to/sees everyone). Setting clinicId
 // on both scopes them to only see each other.
 
-export const createClinic = async ({ name, address = "", phone = "" }) => {
+export const createClinic = async ({ name, address = "", phone = "", logo = "" }) => {
   const ref = doc(collection(db, "clinics"));
   const slug = `${slugify(name)}-${ref.id.slice(-4)}`.toLowerCase();
-  await setDoc(ref, { name, address, phone, slug, active: true, createdAt: serverTimestamp() });
+  await setDoc(ref, { name, address, phone, logo, slug, active: true, createdAt: serverTimestamp() });
   return { id: ref.id, slug };
 };
 
 export const getAllClinics = async () => {
   const snap = await getDocs(collection(db, "clinics"));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+export const getClinicById = async (clinicId) => {
+  if (!clinicId) return null;
+  const snap = await getDoc(doc(db, "clinics", clinicId));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 };
 
 export const getClinicBySlug = async (slug) => {
