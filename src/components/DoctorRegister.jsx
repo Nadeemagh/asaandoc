@@ -13,7 +13,7 @@ const C = {
 };
 
 const SPECIALTIES = [
-  "Clinical Psychologist","General Physician","Cardiologist","Dermatologist","Endocrinologist",
+  "General Physician","Cardiologist","Clinical Psychologist","Dermatologist","Endocrinologist",
   "Gastroenterologist","Gynecologist","Neurologist","Nutritionist & Dietitian",
   "Ophthalmologist","Orthopedic","Pediatrician","Psychiatrist",
   "Pulmonologist","Urologist","ENT Specialist","Diabetologist",
@@ -31,7 +31,7 @@ const inp = (focused) => ({
   boxShadow: focused?"0 0 0 4px rgba(42,191,191,0.1)":"none",
 });
 
-export default function DoctorRegister({ onBack }) {
+export default function DoctorRegister({ onBack, clinicId = null }) {
   const [step,     setStep]     = useState(1);
   const [loading,  setLoading]  = useState(false);
   const [success,  setSuccess]  = useState(false);
@@ -63,6 +63,7 @@ export default function DoctorRegister({ onBack }) {
         pmcNo: form.pmcNo,
         exp: form.exp,
         bio: form.bio,
+        clinicId: clinicId || null,
         clinics: form.clinicName ? [{
           name: form.clinicName,
           address: form.clinicAddress,
