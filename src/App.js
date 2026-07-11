@@ -53,37 +53,60 @@ function LoadingScreen() {
 export default function App() {
   const { user, profile, loading } = useAuth();
 
-  // ── PUBLIC DOCTOR PROFILE (no login required) ──────────────
-  // Matches /doctor/dr-name-specialty-abcd — checked before any auth
-  // logic so it works whether or not anyone is signed in.
   const path = window.location.pathname;
+
+  // ── PUBLIC DOCTOR PROFILE (no login required) ──────────────
+  // Matches /doctor/dr-name-specialty-abcd — always public, regardless
+  // of auth state, since anyone (logged in or not) can view a profile.
   const doctorMatch = path.match(/^\/doctor\/([^/]+)\/?$/);
   if (doctorMatch) {
     return <DoctorProfilePage slug={doctorMatch[1]} />;
   }
+
+  // ── PUBLIC CLINIC LANDING PAGE (no login required) ──────────
   const clinicMatch = path.match(/^\/clinic\/([^/]+)\/?$/);
   if (clinicMatch) {
     return <ClinicSignupPage slug={clinicMatch[1]} />;
-  }
-  const clinicLoginMatch = path.match(/^\/clinic\/([^/]+)\/login\/?$/);
-  if (clinicLoginMatch) {
-    return <><AuthPage initialClinicSlug={clinicLoginMatch[1]} forceTab="signin" /><InstallPrompt /></>;
-  }
-  const clinicDoctorLoginMatch = path.match(/^\/clinic\/([^/]+)\/doctor-login\/?$/);
-  if (clinicDoctorLoginMatch) {
-    return <><AuthPage initialClinicSlug={clinicDoctorLoginMatch[1]} forceTab="signin" /><InstallPrompt /></>;
   }
 
   // ── Show loading screen until role is fully resolved ──────
   // This prevents ANY flash of wrong portal
   if (loading) return <LoadingScreen />;
+
   // ── Not logged in ─────────────────────────────────────────
-  if (!user) return (
-    <>
-      <AuthPage />
-      <InstallPrompt />
-    </>
-  );
+  // Clinic login/doctor-login links only matter while logged OUT — they
+  // just pre-fill the clinic branding + default to the Sign In tab. Once
+  // someone IS logged in, these paths must fall through to the normal
+  // role-based routing below like any other URL, or login would appear
+  // to "hang" forever (stuck showing the AuthPage success screen since
+  // the URL still matched a clinic-login pattern).
+  if (!user) {
+    const clinicLoginMatch = path.match(/^\/clinic\/([^/]+)\/login\/?$/);
+    if (clinicLoginMatch) {
+      return (
+        <>
+          <AuthPage initialClinicSlug={clinicLoginMatch[1]} forceTab="signin" />
+          <InstallPrompt />
+        </>
+      );
+    }
+    const clinicDoctorLoginMatch = path.match(/^\/clinic\/([^/]+)\/doctor-login\/?$/);
+    if (clinicDoctorLoginMatch) {
+      return (
+        <>
+          <AuthPage initialClinicSlug={clinicDoctorLoginMatch[1]} forceTab="signin" />
+          <InstallPrompt />
+        </>
+      );
+    }
+    return (
+      <>
+        <AuthPage />
+        <InstallPrompt />
+      </>
+    );
+  }
+
   // ── Admin ─────────────────────────────────────────────────
   if (ADMIN_EMAILS.includes(user.email?.toLowerCase().trim())) {
     return <AdminPanelLoader />;
