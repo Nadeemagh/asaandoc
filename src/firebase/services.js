@@ -342,7 +342,7 @@ export const updateDoctorData = async (doctorId, data) => {
 
 export const createClinic = async ({ name, address = "", phone = "" }) => {
   const ref = doc(collection(db, "clinics"));
-  const slug = `${slugify(name)}-${ref.id.slice(-4)}`;
+  const slug = `${slugify(name)}-${ref.id.slice(-4)}`.toLowerCase();
   await setDoc(ref, { name, address, phone, slug, active: true, createdAt: serverTimestamp() });
   return { id: ref.id, slug };
 };
@@ -353,7 +353,7 @@ export const getAllClinics = async () => {
 };
 
 export const getClinicBySlug = async (slug) => {
-  const q = query(collection(db, "clinics"), where("slug", "==", slug));
+  const q = query(collection(db, "clinics"), where("slug", "==", (slug || "").toLowerCase()));
   const snap = await getDocs(q);
   if (snap.empty) return null;
   const d = snap.docs[0];
@@ -392,13 +392,13 @@ export const slugify = (str) =>
 export const generateDoctorSlug = (doctor) => {
   const base = slugify(`${doctor.name || "doctor"}-${doctor.specialty || ""}`);
   const suffix = (doctor.id || "").slice(-4) || Math.random().toString(36).slice(-4);
-  return `${base}-${suffix}`;
+  return `${base}-${suffix}`.toLowerCase();
 };
 
 // Look up a doctor by their public slug (used by the public profile page).
 export const getDoctorBySlug = async (slug) => {
   try {
-    const q = query(collection(db, "doctors"), where("slug", "==", slug));
+    const q = query(collection(db, "doctors"), where("slug", "==", (slug || "").toLowerCase()));
     const snap = await getDocs(q);
     if (snap.empty) return null;
     const d = snap.docs[0];
