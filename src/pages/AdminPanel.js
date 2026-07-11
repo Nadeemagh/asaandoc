@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs, query, orderBy, updateDoc, doc, deleteDoc, where } from "firebase/firestore";
 import { db } from "../firebase/config";
-import { logoutUser, backfillDoctorSlugs, ensureDoctorSlug, createClinic, getAllClinics, assignDoctorToClinic, updateClinic } from "../firebase/services";
+import { logoutUser, backfillDoctorSlugs, ensureDoctorSlug, createClinic, getAllClinics, assignDoctorToClinic, updateClinic, deleteClinic, deleteDoctor, deletePatientProfile } from "../firebase/services";
 import AdminPromotionsManager from "../components/AdminPromotionsManager";
 import AdminBackupRestore from "../components/AdminBackupRestore";
 
@@ -94,6 +94,24 @@ export default function AdminPanel() {
     showToast(!current?"✅ Doctor activated":"⏸️ Doctor deactivated");
   };
 
+  const handleDeleteDoctor = async (doctor) => {
+    if (!window.confirm(`⚠️ Permanently delete Dr. ${doctor.name}?\n\nThis removes their profile, and their public link/appointments will no longer work. This cannot be undone.\n\n(Note: their login credentials in Firebase Auth are not removed by this — only their app profile/access.)`)) return;
+    try {
+      await deleteDoctor(doctor.id);
+      setDoctors(ds => ds.filter(d => d.id !== doctor.id));
+      showToast("🗑️ Doctor deleted.");
+    } catch(e) { console.error(e); showToast("Failed to delete doctor."); }
+  };
+
+  const handleDeletePatient = async (patient) => {
+    if (!window.confirm(`⚠️ Permanently delete ${patient.name || patient.email}'s profile?\n\nThis removes their app access and profile data. This cannot be undone.\n\n(Note: their login credentials in Firebase Auth are not removed by this — only their app profile/access.)`)) return;
+    try {
+      await deletePatientProfile(patient.id);
+      setPatients(ps => ps.filter(p => p.id !== patient.id));
+      showToast("🗑️ Patient deleted.");
+    } catch(e) { console.error(e); showToast("Failed to delete patient."); }
+  };
+
   const copyPublicLink = async (doc) => {
     try {
       const slug = await ensureDoctorSlug(doc);
@@ -156,6 +174,20 @@ export default function AdminPanel() {
       showToast("✅ Clinic updated!");
     } catch(e) { console.error(e); showToast("Failed to update clinic."); }
     setSavingClinicEdit(false);
+  };
+
+  const handleDeleteClinic = async (clinic) => {
+    const clinicDoctorCount = doctors.filter(d => d.clinicId === clinic.id).length;
+    const warning = clinicDoctorCount > 0
+      ? `⚠️ Delete "${clinic.name}"?\n\n${clinicDoctorCount} doctor(s) currently assigned to this clinic will be moved back to the open AsaanDoc marketplace. This cannot be undone.`
+      : `Delete "${clinic.name}"? This cannot be undone.`;
+    if (!window.confirm(warning)) return;
+    try {
+      await deleteClinic(clinic.id);
+      setClinics(cs => cs.filter(c => c.id !== clinic.id));
+      setDoctors(ds => ds.map(d => d.clinicId === clinic.id ? { ...d, clinicId: null } : d));
+      showToast("🗑️ Clinic deleted.");
+    } catch(e) { console.error(e); showToast("Failed to delete clinic."); }
   };
 
   const handleAssignClinic = async (doctorId, clinicId) => {
@@ -449,6 +481,10 @@ export default function AdminPanel() {
                           style={{padding:"8px 14px",background:doc.active===false?"#f0fdf4":"#fef2f2",color:doc.active===false?T.accent:T.red,border:`1.5px solid ${doc.active===false?T.accent:T.red}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
                           {doc.active===false?"✅ Activate":"⏸️ Deactivate"}
                         </button>
+                        <button onClick={()=>handleDeleteDoctor(doc)}
+                          style={{padding:"8px 14px",background:"#fef2f2",color:"#EF4444",border:"1.5px solid #EF4444",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                          🗑️ Delete
+                        </button>
                       </div>
                     </div>
                   </Card>
@@ -470,7 +506,7 @@ export default function AdminPanel() {
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
                   <thead>
                     <tr style={{background:T.bg}}>
-                      {["Name","Email","Phone","Appointments","Joined"].map(h=>(
+                      {["Name","Email","Phone","Appointments","Joined","Actions"].map(h=>(
                         <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",borderBottom:`2px solid ${T.border}`}}>{h}</th>
                       ))}
                     </tr>
@@ -485,6 +521,12 @@ export default function AdminPanel() {
                           <td style={{padding:"10px 12px",color:T.muted}}>{p.phone?`+92${p.phone}`:"—"}</td>
                           <td style={{padding:"10px 12px",color:T.primary,fontWeight:700}}>{apptCount}</td>
                           <td style={{padding:"10px 12px",color:T.muted,fontSize:11}}>{p.createdAt?.seconds?new Date(p.createdAt.seconds*1000).toLocaleDateString("en-PK"):"—"}</td>
+                          <td style={{padding:"10px 12px"}}>
+                            <button onClick={()=>handleDeletePatient(p)}
+                              style={{padding:"5px 12px",background:"#fef2f2",color:"#EF4444",border:"1.5px solid #EF4444",borderRadius:7,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+                              🗑️ Delete
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -655,6 +697,10 @@ export default function AdminPanel() {
                             <button onClick={()=>copyClinicLink(c)}
                               style={{padding:"8px 16px",background:T.primaryLight,color:T.primary,border:`1.5px solid ${T.primary}`,borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
                               🔗 Copy Patient Signup Link
+                            </button>
+                            <button onClick={()=>handleDeleteClinic(c)}
+                              style={{padding:"8px 16px",background:"#fef2f2",color:"#EF4444",border:"1.5px solid #EF4444",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                              🗑️ Delete
                             </button>
                           </div>
                         </div>
