@@ -370,6 +370,22 @@ export const updateClinic = async (clinicId, data) => {
   await updateDoc(doc(db, "clinics", clinicId), data);
 };
 
+// Deletes a clinic and un-assigns any doctors that were scoped to it,
+// so they fall back to the open AsaanDoc marketplace rather than being
+// left pointing at a clinic that no longer exists.
+export const deleteClinic = async (clinicId) => {
+  const snap = await getDocs(query(collection(db, "doctors"), where("clinicId", "==", clinicId)));
+  await Promise.all(snap.docs.map(d => updateDoc(doc(db, "doctors", d.id), { clinicId: null })));
+  await deleteDoc(doc(db, "clinics", clinicId));
+};
+
+// Deletes a patient's profile document. NOTE: this does not delete their
+// underlying Firebase Auth account/credentials (that requires the Admin
+// SDK via a Cloud Function) — it removes their app profile/access only.
+export const deletePatientProfile = async (uid) => {
+  await deleteDoc(doc(db, "users", uid));
+};
+
 export const assignDoctorToClinic = async (doctorId, clinicId) => {
   // clinicId === null unassigns the doctor back to the open marketplace
   await updateDoc(doc(db, "doctors", doctorId), { clinicId: clinicId || null });
