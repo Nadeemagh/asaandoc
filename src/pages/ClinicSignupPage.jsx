@@ -15,6 +15,7 @@ const T = {
 };
 
 export const PENDING_CLINIC_KEY = "asaandoc_pending_clinic_id";
+export const PENDING_CLINIC_DOCTOR_KEY = "asaandoc_pending_clinic_doctor_id";
 
 export default function ClinicSignupPage({ slug }) {
   const [clinic, setClinic] = useState(undefined); // undefined = loading, null = not found
@@ -30,6 +31,12 @@ export default function ClinicSignupPage({ slug }) {
   const handleJoin = () => {
     if (!clinic) return;
     localStorage.setItem(PENDING_CLINIC_KEY, clinic.id);
+    window.location.href = "/";
+  };
+
+  const handleDoctorJoin = () => {
+    if (!clinic) return;
+    localStorage.setItem(PENDING_CLINIC_DOCTOR_KEY, clinic.id);
     window.location.href = "/";
   };
 
@@ -80,6 +87,20 @@ export default function ClinicSignupPage({ slug }) {
             Join as a Patient →
           </button>
           <div style={{ fontSize: 11, color: T.muted, marginTop: 10 }}>You'll create a free AsaanDoc account, or sign in if you already have one.</div>
+
+          <div style={{ margin: "20px 0 16px", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ flex: 1, height: 1, background: T.border }}/>
+            <span style={{ fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: "0.06em" }}>OR</span>
+            <div style={{ flex: 1, height: 1, background: T.border }}/>
+          </div>
+
+          <div style={{ padding: "14px", background: "#f0fdf4", borderRadius: 12, border: "1.5px solid #86efac" }}>
+            <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 600, marginBottom: 6 }}>👨‍⚕️ Are you a doctor joining {clinic.name}?</div>
+            <button onClick={handleDoctorJoin}
+              style={{ background: "none", border: "none", color: T.primary, fontWeight: 700, cursor: "pointer", fontSize: 13, fontFamily: "inherit", textDecoration: "underline" }}>
+              Register as a Doctor for this Clinic →
+            </button>
+          </div>
         </div>
 
         <div style={{ textAlign: "center", fontSize: 12, color: T.muted, marginTop: 20 }}>
