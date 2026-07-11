@@ -64,10 +64,13 @@ export default function ClinicSignupPage({ slug }) {
   return (
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: "Inter,system-ui,sans-serif" }}>
       <div style={{ background: `linear-gradient(135deg,${T.primary},${T.primaryDark})`, padding: "16px 20px" }}>
-        <div style={{ maxWidth: 480, margin: "0 auto" }}>
-          <a href="/" style={{ color: "#fff", fontWeight: 900, fontSize: 20, textDecoration: "none" }}>
-            asaan<span style={{ color: "#0d3d3d" }}>doc</span>
-          </a>
+        <div style={{ maxWidth: 480, margin: "0 auto", display: "flex", alignItems: "center", gap: 10 }}>
+          {clinic.logo ? (
+            <img src={clinic.logo} alt={clinic.name} style={{ width: 30, height: 30, borderRadius: 7, objectFit: "cover", background: "#fff" }} onError={e=>{e.target.style.display="none";}}/>
+          ) : (
+            <div style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🏥</div>
+          )}
+          <span style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>{clinic.name}</span>
         </div>
       </div>
 
@@ -79,7 +82,7 @@ export default function ClinicSignupPage({ slug }) {
           {clinic.phone && <div style={{ fontSize: 13, color: T.muted, marginBottom: 18 }}>📞 {clinic.phone}</div>}
 
           <p style={{ fontSize: 14, color: T.text, lineHeight: 1.6, margin: "18px 0 24px" }}>
-            Sign up below to book appointments with doctors at <strong>{clinic.name}</strong> — manage everything through AsaanDoc.
+            Sign up below to book appointments with doctors at <strong>{clinic.name}</strong>.
           </p>
 
           <button onClick={handleJoin}
@@ -101,10 +104,6 @@ export default function ClinicSignupPage({ slug }) {
               Register as a Doctor for this Clinic →
             </button>
           </div>
-        </div>
-
-        <div style={{ textAlign: "center", fontSize: 12, color: T.muted, marginTop: 20 }}>
-          Powered by <a href="/" style={{ color: T.primary, fontWeight: 700, textDecoration: "none" }}>AsaanDoc</a>
         </div>
       </div>
     </div>
