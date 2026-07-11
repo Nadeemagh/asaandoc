@@ -48,18 +48,17 @@ export default function AuthPage() {
   const [success,  setSuccess]  = useState(false);
   const [focused,  setFocused]  = useState(null);
 
-  // If the visitor arrived via a clinic's signup link, show a small
-  // banner so it's clear which clinic they're joining, rather than
-  // silently tagging their account with no visible confirmation.
-  const pendingClinicId = typeof window !== "undefined" ? localStorage.getItem(PENDING_CLINIC_KEY) : null;
-
   // If arriving via a clinic's signup link, fetch that clinic's info so
   // the left panel can show their identity instead of generic AsaanDoc
-  // marketing — this is a fully white-labeled experience for that screen.
+  // marketing. This flag is consumed (removed) the moment it's read, so
+  // it only ever affects THIS one visit — a later direct visit to the
+  // root URL always shows plain AsaanDoc branding again, never a stale
+  // clinic from a previous click.
   const [clinicBrand, setClinicBrand] = useState(null);
   useEffect(() => {
     const cid = localStorage.getItem(PENDING_CLINIC_KEY);
     if (!cid) return;
+    localStorage.removeItem(PENDING_CLINIC_KEY);
     (async () => {
       const c = await getClinicById(cid);
       setClinicBrand(c);
@@ -90,11 +89,12 @@ export default function AuthPage() {
       await updateProfile(cred.user, { displayName: name });
       // If this signup came from a clinic's link, tag the new patient
       // with that clinic so they only ever see that clinic's doctors.
-      const clinicId = localStorage.getItem(PENDING_CLINIC_KEY) || null;
+      // (clinicBrand was already fetched on mount, since the localStorage
+      // flag gets consumed immediately to avoid leaking into later visits.)
+      const clinicId = clinicBrand?.id || null;
       await setDoc(doc(db, "users", cred.user.uid), {
         name, email, phone, role:"patient", clinicId, createdAt: serverTimestamp()
       });
-      if (clinicId) localStorage.removeItem(PENDING_CLINIC_KEY);
       setSuccess(true);
     } catch(err) { setError(friendlyError(err.code)); }
     setLoading(false);
@@ -314,9 +314,9 @@ export default function AuthPage() {
           </div>
         ) : (
           <>
-            {pendingClinicId && tab==="signup" && (
+            {clinicBrand && tab==="signup" && (
               <div style={{ marginBottom:16, padding:"11px 14px", background:"#e8f9f9", border:"1.5px solid #2ABFBF", borderRadius:10, fontSize:12.5, color:"#1B3A5C", fontWeight:600, display:"flex", alignItems:"center", gap:8 }}>
-                🏥 Joining as a patient of your clinic
+                🏥 Joining as a patient of {clinicBrand.name}
               </div>
             )}
 
