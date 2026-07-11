@@ -1,7 +1,7 @@
 // src/pages/PatientPortal.js
 import { useState, useEffect, useCallback } from "react";
 import { T, Badge, Card, StatCard, Toast, Spinner, inputStyle, labelStyle } from "../components/UI";
-import { getDoctorsForPatient, bookAppointment, getAppointmentsByPatient, updateAppointmentStatus, ensureAppointmentVideoRoom } from "../firebase/services";
+import { getDoctorsForPatient, bookAppointment, getAppointmentsByPatient, updateAppointmentStatus, ensureAppointmentVideoRoom, getClinicById } from "../firebase/services";
 import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../firebase/services";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -353,6 +353,14 @@ export default function PatientPortal() {
 
   const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
 
+  // If this patient belongs to a clinic, show that clinic's identity in the
+  // nav bar throughout their session instead of generic AsaanDoc branding.
+  const [clinicBrand, setClinicBrand] = useState(null);
+  useEffect(() => {
+    if (!profile?.clinicId) { setClinicBrand(null); return; }
+    (async () => setClinicBrand(await getClinicById(profile.clinicId)))();
+  }, [profile?.clinicId]);
+
   const loadData = useCallback(async () => {
     setLoadingData(true);
     try {
@@ -457,8 +465,21 @@ export default function PatientPortal() {
         top:0, zIndex:100, boxShadow:"0 4px 20px rgba(33,142,182,0.3)", padding:"0 16px" }}>
         <div style={{ maxWidth:960, margin:"0 auto", height:60, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <img src="/logo.png" alt="AsaanDoc" style={{ height:36, filter:"brightness(0) invert(1)" }} onError={e=>{e.target.style.display="none";}} />
-            <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11 }}>Patient Portal</div>
+            {clinicBrand ? (
+              <>
+                {clinicBrand.logo ? (
+                  <img src={clinicBrand.logo} alt={clinicBrand.name} style={{ height:32, width:32, borderRadius:8, objectFit:"cover", background:"#fff" }} onError={e=>{e.target.style.display="none";}}/>
+                ) : (
+                  <div style={{ height:32, width:32, borderRadius:8, background:"rgba(255,255,255,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🏥</div>
+                )}
+                <div style={{ color:"#fff", fontWeight:800, fontSize:15, lineHeight:1.2 }}>{clinicBrand.name}</div>
+              </>
+            ) : (
+              <>
+                <img src="/logo.png" alt="AsaanDoc" style={{ height:36, filter:"brightness(0) invert(1)" }} onError={e=>{e.target.style.display="none";}} />
+                <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11 }}>Patient Portal</div>
+              </>
+            )}
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
             {[["home","🏠",tr.home],["browse","🔍",tr.doctors],["myappts","📋",tr.myAppts],["prescriptions","💊",tr.myRx],["records","🗂️",tr.records],["symptoms","🤖",tr.symptoms],["membership","👑",tr.membership],["profile","👤",tr.profile]].map(([v,icon,label])=>(
