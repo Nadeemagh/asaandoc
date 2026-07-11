@@ -45,6 +45,7 @@ export default function AdminPanel() {
   const [newClinicName, setNewClinicName] = useState("");
   const [newClinicAddress, setNewClinicAddress] = useState("");
   const [newClinicPhone, setNewClinicPhone] = useState("");
+  const [newClinicLogo, setNewClinicLogo] = useState("");
   const [creatingClinic, setCreatingClinic] = useState(false);
 
   const loadClinics = async () => {
@@ -112,8 +113,8 @@ export default function AdminPanel() {
     if (!newClinicName.trim()) { showToast("Enter a clinic name."); return; }
     setCreatingClinic(true);
     try {
-      await createClinic({ name: newClinicName.trim(), address: newClinicAddress.trim(), phone: newClinicPhone.trim() });
-      setNewClinicName(""); setNewClinicAddress(""); setNewClinicPhone("");
+      await createClinic({ name: newClinicName.trim(), address: newClinicAddress.trim(), phone: newClinicPhone.trim(), logo: newClinicLogo.trim() });
+      setNewClinicName(""); setNewClinicAddress(""); setNewClinicPhone(""); setNewClinicLogo("");
       await loadClinics();
       showToast("✅ Clinic created!");
     } catch(e) { console.error(e); showToast("Failed to create clinic."); }
@@ -549,7 +550,7 @@ export default function AdminPanel() {
             <div style={{animation:"fadeUp 0.4s ease-out"}}>
               <Card style={{marginBottom:20}}>
                 <div style={{fontWeight:800,color:T.text,marginBottom:14,fontSize:15}}>+ Add New Clinic</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr auto",gap:12,alignItems:"end"}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr auto",gap:12,alignItems:"end"}}>
                   <div>
                     <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Clinic Name</label>
                     <input value={newClinicName} onChange={e=>setNewClinicName(e.target.value)} placeholder="e.g. ABC Medical Center"
@@ -563,6 +564,11 @@ export default function AdminPanel() {
                   <div>
                     <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Phone</label>
                     <input value={newClinicPhone} onChange={e=>setNewClinicPhone(e.target.value)} placeholder="Optional"
+                      style={{width:"100%",padding:"9px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                  </div>
+                  <div>
+                    <label style={{display:"block",fontSize:11,fontWeight:700,color:T.muted,textTransform:"uppercase",marginBottom:6}}>Logo URL</label>
+                    <input value={newClinicLogo} onChange={e=>setNewClinicLogo(e.target.value)} placeholder="Optional image link"
                       style={{width:"100%",padding:"9px 12px",border:`1.5px solid ${T.border}`,borderRadius:9,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
                   </div>
                   <button onClick={handleCreateClinic} disabled={creatingClinic}
