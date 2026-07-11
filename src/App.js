@@ -5,6 +5,7 @@ import PatientPortal from "./pages/PatientPortal";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import InstallPrompt from "./components/InstallPrompt";
 import DoctorProfilePage from "./pages/DoctorProfilePage";
+import ClinicSignupPage from "./pages/ClinicSignupPage";
 const ADMIN_EMAILS = ["admin@asaandoc.com"];
 function AdminPanelLoader() {
   try {
@@ -59,6 +60,10 @@ export default function App() {
   const doctorMatch = path.match(/^\/doctor\/([^/]+)\/?$/);
   if (doctorMatch) {
     return <DoctorProfilePage slug={doctorMatch[1]} />;
+  }
+  const clinicMatch = path.match(/^\/clinic\/([^/]+)\/?$/);
+  if (clinicMatch) {
+    return <ClinicSignupPage slug={clinicMatch[1]} />;
   }
 
   // ── Show loading screen until role is fully resolved ──────
