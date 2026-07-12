@@ -349,6 +349,7 @@ export default function PatientPortal() {
   const [toast, setToast] = useState(null);
   const [receiptModal, setReceiptModal] = useState(null);
   const [videoCall, setVideoCall] = useState(null); // holds the appointment being joined, or null
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [form, setForm] = useState({ date:"", slot:"", reason:"", receipt:"", receiptName:"" });
 
   const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
@@ -464,42 +465,81 @@ export default function PatientPortal() {
       <div style={{ background:`linear-gradient(135deg,${T.primary},${T.primaryDark})`, position:"sticky",
         top:0, zIndex:100, boxShadow:"0 4px 20px rgba(33,142,182,0.3)", padding:"0 16px" }}>
         <div style={{ maxWidth:960, margin:"0 auto", height:60, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0, overflow:"hidden" }}>
             {clinicBrand ? (
               <>
                 {clinicBrand.logo ? (
-                  <img src={clinicBrand.logo} alt={clinicBrand.name} style={{ height:32, width:32, borderRadius:8, objectFit:"cover", background:"#fff" }} onError={e=>{e.target.style.display="none";}}/>
+                  <img src={clinicBrand.logo} alt={clinicBrand.name} style={{ height:32, width:32, borderRadius:8, objectFit:"cover", background:"#fff", flexShrink:0 }} onError={e=>{e.target.style.display="none";}}/>
                 ) : (
-                  <div style={{ height:32, width:32, borderRadius:8, background:"rgba(255,255,255,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🏥</div>
+                  <div style={{ height:32, width:32, borderRadius:8, background:"rgba(255,255,255,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>🏥</div>
                 )}
-                <div style={{ color:"#fff", fontWeight:800, fontSize:15, lineHeight:1.2 }}>{clinicBrand.name}</div>
+                <div style={{ color:"#fff", fontWeight:800, fontSize:15, lineHeight:1.2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{clinicBrand.name}</div>
               </>
             ) : (
               <>
-                <img src="/logo.png" alt="AsaanDoc" style={{ height:36, filter:"brightness(0) invert(1)" }} onError={e=>{e.target.style.display="none";}} />
-                <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11 }}>Patient Portal</div>
+                <img src="/logo.png" alt="AsaanDoc" style={{ height:36, filter:"brightness(0) invert(1)", flexShrink:0 }} onError={e=>{e.target.style.display="none";}} />
+                <div style={{ color:"rgba(255,255,255,0.6)", fontSize:11, whiteSpace:"nowrap" }}>Patient Portal</div>
               </>
             )}
           </div>
-          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+
+          {/* Desktop nav — hidden below 900px */}
+          <div className="pp-nav-desktop" style={{ display:"flex", alignItems:"center", gap:6 }}>
             {[["home","🏠",tr.home],["browse","🔍",tr.doctors],["myappts","📋",tr.myAppts],["prescriptions","💊",tr.myRx],["records","🗂️",tr.records],["symptoms","🤖",tr.symptoms],["membership","👑",tr.membership],["profile","👤",tr.profile]].map(([v,icon,label])=>(
               <button key={v} onClick={()=>setView(v)}
                 style={{ padding:"7px 12px", borderRadius:8, border:"none", cursor:"pointer", fontSize:13,
                   fontWeight:600, background:view===v?"rgba(255,255,255,0.2)":"transparent",
-                  color:view===v?"#fff":"rgba(255,255,255,0.65)" }}>
-                <span>{icon}</span> <span style={{ display:window.innerWidth>640?"inline":"none" }}>{label}</span>
+                  color:view===v?"#fff":"rgba(255,255,255,0.65)", whiteSpace:"nowrap" }}>
+                <span>{icon}</span> <span>{label}</span>
               </button>
             ))}
             <button onClick={()=>setUrdu(u=>!u)}
-              style={{ padding:"7px 12px", borderRadius:8, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.8)", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+              style={{ padding:"7px 12px", borderRadius:8, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.8)", fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>
               {urdu ? "EN" : "اردو"}
             </button>
             <button onClick={logoutUser}
-              style={{ padding:"7px 12px", borderRadius:8, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.75)", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+              style={{ padding:"7px 12px", borderRadius:8, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.75)", fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
               {tr.signOut}
             </button>
           </div>
+
+          {/* Mobile hamburger — hidden above 900px */}
+          <button className="pp-nav-hamburger" onClick={()=>setMobileMenuOpen(o=>!o)}
+            style={{ display:"none", width:38, height:38, borderRadius:9, border:"1.5px solid rgba(255,255,255,0.3)", background:"rgba(255,255,255,0.1)", color:"#fff", fontSize:18, cursor:"pointer", flexShrink:0, alignItems:"center", justifyContent:"center" }}>
+            {mobileMenuOpen ? "✕" : "☰"}
+          </button>
         </div>
+
+        <style>{`
+          @media (max-width: 900px) {
+            .pp-nav-desktop { display: none !important; }
+            .pp-nav-hamburger { display: flex !important; }
+          }
+        `}</style>
+
+        {/* Mobile dropdown menu */}
+        {mobileMenuOpen && (
+          <div style={{ maxWidth:960, margin:"0 auto", paddingBottom:12, display:"flex", flexDirection:"column", gap:4 }}>
+            {[["home","🏠",tr.home],["browse","🔍",tr.doctors],["myappts","📋",tr.myAppts],["prescriptions","💊",tr.myRx],["records","🗂️",tr.records],["symptoms","🤖",tr.symptoms],["membership","👑",tr.membership],["profile","👤",tr.profile]].map(([v,icon,label])=>(
+              <button key={v} onClick={()=>{ setView(v); setMobileMenuOpen(false); }}
+                style={{ padding:"11px 14px", borderRadius:9, border:"none", cursor:"pointer", fontSize:14, textAlign:"left",
+                  fontWeight:600, background:view===v?"rgba(255,255,255,0.2)":"transparent",
+                  color:view===v?"#fff":"rgba(255,255,255,0.75)", display:"flex", alignItems:"center", gap:10 }}>
+                <span>{icon}</span> <span>{label}</span>
+              </button>
+            ))}
+            <div style={{ display:"flex", gap:8, marginTop:6 }}>
+              <button onClick={()=>setUrdu(u=>!u)}
+                style={{ flex:1, padding:"11px 14px", borderRadius:9, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.85)", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                {urdu ? "English" : "اردو"}
+              </button>
+              <button onClick={logoutUser}
+                style={{ flex:1, padding:"11px 14px", borderRadius:9, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.85)", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                {tr.signOut}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={{ maxWidth:view==="home"?1360:960, margin:"0 auto", padding:"24px 16px" }}>
