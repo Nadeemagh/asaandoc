@@ -491,6 +491,15 @@ export default function DoctorDashboard() {
   const todayAppts = appointments.filter(a=>a.date===todayStr);
   const upcoming = appointments.filter(a=>a.date>todayStr&&a.status!=="cancelled");
   const pending = appointments.filter(a=>a.status==="pending");
+
+  // Show a number badge on the installed app icon for pending appointments
+  // needing action. Only works in Chromium-based browsers (Chrome/Edge) —
+  // silently does nothing elsewhere, since the Badging API isn't universal.
+  useEffect(() => {
+    if (!("setAppBadge" in navigator)) return;
+    if (pending.length > 0) navigator.setAppBadge(pending.length).catch(()=>{});
+    else navigator.clearAppBadge().catch(()=>{});
+  }, [pending.length]);
   const completed = appointments.filter(a=>a.status==="completed");
   const dayAppts = appointments.filter(a=>a.date===selectedDate);
   const filteredAll = filterStatus==="All"?appointments:appointments.filter(a=>a.status===filterStatus);
@@ -598,7 +607,7 @@ export default function DoctorDashboard() {
               </div>
             </div>
           )}
-          <button onClick={logoutUser}
+          <button onClick={()=>{ if("clearAppBadge" in navigator) navigator.clearAppBadge().catch(()=>{}); logoutUser(); }}
             style={{width:"100%",padding:"9px 10px",borderRadius:10,border:"1.5px solid rgba(255,255,255,0.2)",
               background:"transparent",color:"rgba(255,255,255,0.6)",fontWeight:600,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
             <span>🚪</span>{sidebarOpen&&"Sign Out"}
