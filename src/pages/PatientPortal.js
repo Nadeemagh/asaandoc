@@ -456,6 +456,15 @@ export default function PatientPortal() {
   };
 
   const upcoming = appointments.filter(a=>a.status==="confirmed"||a.status==="pending");
+
+  // Show a number badge on the installed app icon for upcoming/pending
+  // appointments. Only works in Chromium-based browsers (Chrome/Edge) —
+  // silently does nothing elsewhere, since the Badging API isn't universal.
+  useEffect(() => {
+    if (!("setAppBadge" in navigator)) return;
+    if (upcoming.length > 0) navigator.setAppBadge(upcoming.length).catch(()=>{});
+    else navigator.clearAppBadge().catch(()=>{});
+  }, [upcoming.length]);
   const completed = appointments.filter(a=>a.status==="completed");
 
   return (
@@ -497,7 +506,7 @@ export default function PatientPortal() {
               style={{ padding:"7px 12px", borderRadius:8, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.8)", fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>
               {urdu ? "EN" : "اردو"}
             </button>
-            <button onClick={logoutUser}
+            <button onClick={()=>{ if("clearAppBadge" in navigator) navigator.clearAppBadge().catch(()=>{}); logoutUser(); }}
               style={{ padding:"7px 12px", borderRadius:8, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.75)", fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
               {tr.signOut}
             </button>
@@ -533,7 +542,7 @@ export default function PatientPortal() {
                 style={{ flex:1, padding:"11px 14px", borderRadius:9, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.85)", fontSize:13, fontWeight:700, cursor:"pointer" }}>
                 {urdu ? "English" : "اردو"}
               </button>
-              <button onClick={logoutUser}
+              <button onClick={()=>{ if("clearAppBadge" in navigator) navigator.clearAppBadge().catch(()=>{}); logoutUser(); }}
                 style={{ flex:1, padding:"11px 14px", borderRadius:9, border:"1.5px solid rgba(255,255,255,0.3)", background:"transparent", color:"rgba(255,255,255,0.85)", fontSize:13, fontWeight:700, cursor:"pointer" }}>
                 {tr.signOut}
               </button>
